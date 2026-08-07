@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
-import { Mascot } from '@/components/mascot';
 import { Patch, PatchHeading } from '@/components/ui/patch';
 import { Sparks, Underscribble, Zigzag } from '@/components/ui/scribble';
 import { ArrowRightIcon } from '@/components/ui/icons';
@@ -39,9 +38,11 @@ export default function HomePage() {
         <Logo width={188} priority />
       </div>
 
-      {/* ── Балансът ──────────────────────────────────────────────────────── */}
-      <section className="mt-4 flex items-center gap-4">
-        <Patch material="leather" tilt={-1.5} className="flex-1 px-5 py-4">
+      {/* ── Балансът ────────────────────────────────────────────────────────
+          Заема целия ред. Преди до него стоеше фигура и двете се биеха за
+          вниманието; сега числото е единственото нещо тук. */}
+      <section className="mt-4">
+        <Patch material="leather" tilt={-1.5} className="px-5 py-4">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
             Твоят баланс
             <Sparks className="h-3 w-4 text-lime" />
@@ -54,8 +55,6 @@ export default function HomePage() {
           </div>
           <Underscribble className="mt-0.5 h-2.5 w-24 text-lime/60" />
         </Patch>
-
-        <Mascot credits={credits} size={84} className="shrink-0" />
       </section>
 
       {/* ── Главното действие ─────────────────────────────────────────────── */}

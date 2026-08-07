@@ -1,21 +1,20 @@
 /**
  * ДОЛНОТО МЕНЮ
  *
- * Плаващо, тъмно, с издигнат център. Героят е бутонът за нова проба —
- * менюто и героят са едно нещо, не две.
+ * Плаващо, тъмно, с издигнат център.
  *
  * ═══ ЗАЩО ТУК НЯМА АНИМАЦИЯ НА ПРЕХОДА МЕЖДУ ТАБОВЕТЕ ═══
  *
  * Менюто се натиска десетки пъти на ден. Анимация, която се вижда толкова
- * често, спира да е приятна и започва да е бавене. Остава само
- * `scale(0.97)` при натискане — обратна връзка, не украса.
+ * често, спира да е приятна и започва да е бавене. Затова: нула преходи,
+ * нула въртене на празен ход. Остава само `scale` при натискане — това е
+ * обратна връзка, не украса.
  */
 
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Mascot, type MascotState } from '@/components/mascot';
 import { cn } from '@/lib/cn';
 
 type Item = {
@@ -86,30 +85,94 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       <span className="sr-only">{item.label}</span>
       {/* Точката казва къде си, без да мести иконата. */}
       <span
-        className={cn(
-          'mt-1 block size-1 rounded-full transition-opacity duration-[var(--dur-menu)] ease-[var(--ease-out)]',
-          active ? 'bg-lime opacity-100' : 'opacity-0',
-        )}
+        className={cn('mt-1 block size-1 rounded-full', active ? 'bg-lime' : 'bg-transparent')}
       />
     </Link>
   );
 }
 
-export function BottomNav({
-  credits,
-  state = 'idle',
-  daysSinceLastUse = 0,
-}: {
-  credits: number;
-  state?: MascotState;
-  daysSinceLastUse?: number;
-}) {
+/**
+ * ЦЕНТРАЛНОТО КОПЧЕ
+ *
+ * Главното действие на цялото приложение. Три решения:
+ *
+ * 1. НЕ Е КРЪГ. Кръгът е това, което прави всяко приложение. Тук е парче
+ *    с неравни ъгли и лек наклон — същата форма, с която е сглобено
+ *    логото. Знакът вътре е изправен: наклонена е подложката, не плюсът,
+ *    защото крив плюс се чете като грешка.
+ *
+ * 2. ДЕБЕЛ ТЪМЕН ПРЪСТЕН. Копчето седи върху тъмната лента и наполовина
+ *    излиза от нея. Без пръстена лаймът се слива с ръба на лентата и
+ *    формата се губи.
+ *
+ * 3. НУЛА ДВИЖЕНИЕ НА ПРАЗЕН ХОД. Пулсиращо копче в менюто, което се
+ *    гледа по цял ден, спира да привлича и започва да дразни. Изпъква с
+ *    цвят, размер и височина — не с мърдане.
+ */
+function NewTryButton({ active }: { active: boolean }) {
+  return (
+    <Link
+      href="/proba"
+      aria-label="Нова проба"
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'group absolute left-1/2 top-1/2 grid size-[72px] -translate-x-1/2 -translate-y-1/2',
+        'place-items-center rounded-full',
+        'transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)]',
+        'active:scale-[0.94]',
+      )}
+    >
+      {/* Подложката: наклонено парче плетка с тъмен пръстен. */}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'tx-knit absolute inset-0 -rotate-3',
+          'rounded-[24px_18px_26px_16px]',
+          'ring-[5px] ring-ink',
+          'shadow-[0_5px_0_var(--color-lime-deep),0_10px_20px_-8px_rgba(0,0,0,.7)]',
+          'transition-shadow duration-[var(--dur-press)] ease-[var(--ease-out)]',
+          'group-active:shadow-[0_2px_0_var(--color-lime-deep),0_5px_12px_-8px_rgba(0,0,0,.7)]',
+        )}
+      />
+
+      {/* Знакът: прав, дебел, с маркерни щрихи в единия ъгъл — ръката от
+          логото, но в най-малката възможна доза. */}
+      <svg viewBox="0 0 44 44" className="relative size-[38px] text-ink" aria-hidden="true">
+        <path
+          d="M22 12v20M12 22h20"
+          stroke="currentColor"
+          strokeWidth="5.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M33 8.5 35.5 4M37.5 12l4-2.5"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          opacity="0.55"
+        />
+      </svg>
+    </Link>
+  );
+}
+
+/**
+ * `standalone` е за демо страницата: там менюто трябва да седи в потока,
+ * а не да се залепва за дъното на екрана. Един източник на истината е
+ * по-добре от втори екземпляр, който после се разминава с истинския.
+ */
+export function BottomNav({ standalone }: { standalone?: boolean } = {}) {
   const pathname = usePathname();
 
   return (
     <nav
-      aria-label="Основно меню"
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[430px] px-4 pb-[max(14px,env(safe-area-inset-bottom))]"
+      aria-label={standalone ? 'Основно меню (мостра)' : 'Основно меню'}
+      className={cn(
+        'mx-auto w-full max-w-[430px] px-4',
+        standalone
+          ? 'relative pb-4 pt-5'
+          : 'fixed inset-x-0 bottom-0 z-40 pb-[max(14px,env(safe-area-inset-bottom))]',
+      )}
     >
       <div className="relative flex h-[62px] items-center justify-between rounded-[26px] bg-ink px-5 shadow-[0_10px_34px_-10px_rgba(20,20,22,.65)]">
         <div className="flex gap-2">
@@ -118,7 +181,7 @@ export function BottomNav({
           ))}
         </div>
 
-        {/* Дупка в лентата, за да седне героят в нея. */}
+        {/* Дупка в лентата, за да седне копчето в нея. */}
         <div className="w-[76px]" aria-hidden="true" />
 
         <div className="flex gap-2">
@@ -127,22 +190,7 @@ export function BottomNav({
           ))}
         </div>
 
-        <Link
-          href="/proba"
-          aria-label="Нова проба"
-          className={cn(
-            'pressable absolute left-1/2 top-1/2 grid size-[72px] -translate-x-1/2 -translate-y-1/2 place-items-center',
-            'rounded-full bg-paper ring-[5px] ring-ink',
-            'shadow-[0_6px_18px_-6px_rgba(20,20,22,.6)]',
-          )}
-        >
-          <Mascot
-            credits={credits}
-            state={state}
-            daysSinceLastUse={daysSinceLastUse}
-            size={54}
-          />
-        </Link>
+        <NewTryButton active={pathname === '/proba'} />
       </div>
     </nav>
   );

@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Logo } from '@/components/logo';
-import { Mascot } from '@/components/mascot';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
@@ -62,12 +61,8 @@ export default function VhodPage() {
         </p>
       </div>
 
-      <div className="mt-9 flex justify-center">
-        <Mascot mood="happy" size={112} eager />
-      </div>
-
       {/* ── Входовете ──────────────────────────────────────────────────── */}
-      <div className="stagger mt-9 space-y-2.5">
+      <div className="stagger mt-10 space-y-2.5">
         {PROVIDERS.map((provider) => (
           <button
             key={provider.id}

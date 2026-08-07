@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { MascotButton } from '@/components/mascot';
 import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
 import { Tabs } from '@/components/ui/tabs';
@@ -71,7 +70,8 @@ export default function ProbaPage() {
   const [link, setLink] = React.useState('');
   const [garment, setGarment] = React.useState(false);
 
-  const credits = 12;
+  // Идва от сесията, щом екраните се вържат за API-тата.
+  const credits: number = 12;
   const hasPhoto = true;
   const ready = hasPhoto && (tab === 'link' ? link.trim().length > 0 : garment);
 
@@ -172,25 +172,26 @@ export default function ProbaPage() {
       </section>
 
       {/* ── Действието ──────────────────────────────────────────────────────
-          Копчето Е героят. Няма правоъгълник около него — самата фигура
-          се натиска. Зъбното колело стои отстрани, малко и тихо: то е
-          настройка, не действие. */}
-      <div className="relative mt-9">
-        <MascotButton
-          credits={credits}
-          disabled={!ready}
-          label={ready ? 'Генерирай' : 'Първо избери дреха'}
-          hint={ready ? '1 кредит' : undefined}
-        />
+          Копчето за генериране е широко и лаймово; зъбното колело е малко
+          и тихо до него. Едното е действие, другото е настройка — и това
+          трябва да си личи от разстояние, без да се чете. */}
+      <div className="mt-8 flex items-center gap-2.5">
+        <Button variant="action" size="lg" block disabled={!ready}>
+          {ready ? 'Генерирай · 1 кредит' : 'Първо избери дреха'}
+        </Button>
 
         <button
           aria-label="Настройки на генерирането"
           onClick={() => setSettingsOpen(true)}
-          className="pressable absolute right-1 top-6 grid size-12 place-items-center rounded-full bg-paper-2 text-ink-70"
+          className="pressable grid size-14 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-70"
         >
           <GearIcon />
         </button>
       </div>
+
+      <p className="mt-3 text-center text-[12.5px] text-ink-45">
+        Имаш {credits} {credits === 1 ? 'кредит' : 'кредита'}.
+      </p>
 
       {/* ── Настройките ─────────────────────────────────────────────────── */}
       <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки">

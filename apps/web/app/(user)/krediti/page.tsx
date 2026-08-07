@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
-import { Mascot } from '@/components/mascot';
 import { Underscribble } from '@/components/ui/scribble';
 
 /**
@@ -79,14 +78,11 @@ export default function KreditiPage() {
       </p>
 
       {/* ── Какво се променя след покупка ───────────────────────────────── */}
-      <section className="mt-10 flex items-center gap-4 rounded-[var(--radius-card)] bg-violet-wash p-4">
-        <Mascot credits={credits} size={64} className="shrink-0" />
-        <div>
-          <div className="text-[15px] font-semibold">Без воден знак</div>
-          <p className="mt-0.5 text-[13px] leading-snug text-ink-70">
-            След първата покупка всички проби излизат чисти — и старите, и новите.
-          </p>
-        </div>
+      <section className="mt-10 rounded-[var(--radius-card)] bg-violet-wash p-5">
+        <div className="text-[15px] font-semibold">Без воден знак</div>
+        <p className="mt-1 text-[13.5px] leading-snug text-ink-70">
+          След първата покупка всички проби излизат чисти — и старите, и новите.
+        </p>
       </section>
     </main>
   );

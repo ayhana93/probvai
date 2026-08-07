@@ -1,7 +1,6 @@
 import Link from 'next/link';
-import { Mascot } from '@/components/mascot';
 import { Patch } from '@/components/ui/patch';
-import { Zigzag } from '@/components/ui/scribble';
+import { Sparks, Zigzag } from '@/components/ui/scribble';
 
 /**
  * ГАРДЕРОБ
@@ -26,8 +25,16 @@ export default function GarderobPage() {
   if (empty) {
     return (
       <main className="flex min-h-[70dvh] flex-col items-center justify-center px-8 text-center">
-        <Mascot credits={0} size={120} />
-        <h1 className="display mt-6 text-[24px]">Още е празно</h1>
+        {/* Празното състояние показва КАКВО идва: три празни парчета,
+            подредени като бъдещия гардероб. По-разбираемо от една икона. */}
+        <div aria-hidden="true" className="relative mb-7 flex items-end gap-2">
+          <Patch material="paper" tilt={-6} className="h-20 w-16 opacity-45" />
+          <Patch material="knit" tilt={2} className="h-28 w-20" />
+          <Patch material="paper" tilt={6} className="h-20 w-16 opacity-45" />
+          <Sparks className="absolute -right-5 -top-3 h-5 w-8 text-violet" />
+        </div>
+
+        <h1 className="display text-[24px]">Още е празно</h1>
         <p className="mt-2 max-w-[260px] text-[14px] leading-snug text-ink-45">
           Първата ти проба ще се появи тук. Гардеробът е само твой — никой друг
           не го вижда.

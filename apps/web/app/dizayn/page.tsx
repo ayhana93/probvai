@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Mascot, MascotButton, MOOD_THRESHOLDS, type MascotMood } from '@/components/mascot';
+import { BottomNav } from '@/components/bottom-nav';
 import { Button, IconButton } from '@/components/ui/button';
 import { Patch, PatchHeading, type Material } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
@@ -26,17 +26,6 @@ const MATERIALS: { key: Material; label: string; note: string }[] = [
   { key: 'dots', label: 'Точки', note: 'от „А"' },
   { key: 'fur', label: 'Кожухче', note: 'от „Й"' },
   { key: 'paper', label: 'Хартия', note: 'основата' },
-];
-
-const MASCOTS: { mood: MascotMood; label: string; when: string }[] = [
-  { mood: 'empty', label: 'празен', when: '0 кредита' },
-  { mood: 'low', label: 'малко', when: `1–${MOOD_THRESHOLDS.happy - 1}` },
-  { mood: 'happy', label: 'доволен', when: `${MOOD_THRESHOLDS.happy}–${MOOD_THRESHOLDS.full - 1}` },
-  { mood: 'full', label: 'пълен', when: `${MOOD_THRESHOLDS.full}+` },
-  { mood: 'stale', label: 'цупи се', when: `${MOOD_THRESHOLDS.staleDays}+ дни` },
-  { mood: 'working', label: 'работи', when: 'генерира' },
-  { mood: 'done', label: 'готово', when: 'успех' },
-  { mood: 'failed', label: 'провал', when: 'грешка' },
 ];
 
 function Row({ title, children }: { title: string; children: React.ReactNode }) {
@@ -79,32 +68,18 @@ export default function DizaynPage() {
         </div>
       </Row>
 
-      <Row title="Героят">
-        <div className="grid grid-cols-4 gap-y-5">
-          {MASCOTS.map((item) => (
-            <div key={item.mood} className="flex flex-col items-center gap-1">
-              <Mascot mood={item.mood} size={72} />
-              <span className="text-center text-[10.5px] font-semibold leading-tight">
-                {item.label}
-              </span>
-              <span className="text-center text-[9.5px] leading-tight text-ink-45">
-                {item.when}
-              </span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-[12.5px] leading-snug text-ink-45">
-          Прагът {MOOD_THRESHOLDS.full} не е случаен: безплатните кредити
-          стигат най-много до 5, а най-малката покупка е 25. Значи над
-          {' '}{MOOD_THRESHOLDS.full} стига само човек, който е платил —
-          и празничното лице е негово.
-        </p>
-
-        <div className="mt-7 rounded-[var(--radius-card)] bg-paper-2 py-6">
-          <MascotButton credits={12} label="Генерирай" hint="1 кредит" />
+      <Row title="Долното меню">
+        <div className="overflow-hidden rounded-[var(--radius-card)] bg-paper-2">
+          <BottomNav standalone />
         </div>
         <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
-          Героят Е копчето за нова проба. Няма правоъгълник около него.
+          Централното копче не е кръг, а наклонено парче плетка с тъмен
+          пръстен — същата форма, с която е сглобено логото. Знакът вътре е
+          изправен: наклонена е подложката, не плюсът.
+        </p>
+        <p className="mt-2 text-[12.5px] leading-snug text-ink-45">
+          Нула движение на празен ход. Копче, което се гледа по цял ден,
+          изпъква с цвят, размер и височина — не с мърдане.
         </p>
       </Row>
 
@@ -129,8 +104,8 @@ export default function DizaynPage() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'a', label: 'Постави линк' },
-            { value: 'b', label: 'Качи снимка' },
+            { value: 'a', label: 'Качи снимка' },
+            { value: 'b', label: 'Постави линк' },
           ]}
         />
         <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
