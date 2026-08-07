@@ -12,11 +12,13 @@
     "@auth/prisma-adapter": "^2.11.3",
     "@probvai/core": "*",
     "@probvai/db": "*",
+    "clsx": "^2.1.1",
     "motion": "^13.0.0",
     "next": "^15.5.23",
     "next-auth": "^5.0.0-beta.32",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
@@ -25,6 +27,7 @@
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.39.0",
     "eslint-config-next": "^15.5.23",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4.3.3"
   }
 }

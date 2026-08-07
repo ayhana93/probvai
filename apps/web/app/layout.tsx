@@ -1,5 +1,23 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter, Unbounded } from 'next/font/google';
 import './globals.css';
+
+/**
+ * Двата шрифта следват логото: буквите там са тежки, събрани и главни,
+ * а под тях трябва нещо, което се чете на 13px без да се напрягаш.
+ */
+const display = Unbounded({
+  subsets: ['cyrillic', 'latin'],
+  weight: ['700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const text = Inter({
+  subsets: ['cyrillic', 'latin'],
+  variable: '--font-text',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'ПРОБВАЙ',
@@ -9,17 +27,21 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // Мобилен първо. Долното меню е плаващо и трябва да седи над безопасната зона.
   viewportFit: 'cover',
-  themeColor: '#1c1c1e',
+  themeColor: '#141416',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="bg">
-      <body className="min-h-dvh antialiased">{children}</body>
+    <html lang="bg" className={`${display.variable} ${text.variable}`}>
+      <body
+        className="min-h-dvh antialiased"
+        style={{ fontFamily: 'var(--font-text), system-ui, sans-serif' }}
+      >
+        {children}
+      </body>
     </html>
   );
 }
