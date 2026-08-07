@@ -1,0 +1,25 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Тайни — никога в git
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Генериран Prisma клиент
+packages/db/src/generated/
+
+# Логове и временни файлове
+*.log
+npm-debug.log*
+.DS_Store
+coverage/
+.vitest/
+*.tsbuildinfo
+
+# Локални данни на Postgres от docker-compose
+.docker-data/

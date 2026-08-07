@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+/* Основните цветове на ПРОБВАЙ. Перленият градиент розово → лилаво → циан
+   идва във Фаза 3 заедно с героя. */
+@theme {
+  --color-ink: #1c1c1e;
+}
+
+:root {
+  color-scheme: light;
+}
+
+/* Правило от Фаза 9, което спазваме от самото начало:
+   който е изключил движението, не вижда движение. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

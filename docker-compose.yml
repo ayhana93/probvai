@@ -1,0 +1,62 @@
+# Локална разработка.
+#
+# За ежедневна работа обикновено ти трябва само базата:
+#
+#     docker compose up -d postgres
+#     npm run dev
+#
+# За да пробваш производствения образ такъв, какъвто ще тръгне на хостинга:
+#
+#     docker compose up --build
+#
+# Данните живеят в именуван volume, не в папка на хоста — така работи
+# еднакво на Linux, macOS и Windows.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: probvai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Създава базата и четирите роли при първо стартиране.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d probvai']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      target: runner
+    container_name: probvai-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      APP_VERSION: local
+      # Вътре в мрежата на compose хостът на базата е `postgres`, не `localhost`.
+      DATABASE_URL: postgresql://probvai_migrator:migrator_dev@postgres:5432/probvai
+      DATABASE_URL_APP: postgresql://app_user:app_user_dev@postgres:5432/probvai
+      DATABASE_URL_SYSTEM: postgresql://app_system:app_system_dev@postgres:5432/probvai
+      DATABASE_URL_ADMIN: postgresql://app_admin:app_admin_dev@postgres:5432/probvai
+      # Контейнерът сам вдига схемата при стартиране.
+      RUN_MIGRATIONS: '1'
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:
