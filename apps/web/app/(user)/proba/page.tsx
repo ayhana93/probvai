@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
@@ -61,6 +62,7 @@ function StepBadge({ n, done }: { n: number; done?: boolean }) {
 }
 
 export default function ProbaPage() {
+  const router = useRouter();
   // Качването е по подразбиране. Повечето хора вече имат снимката в
   // телефона си; линкът е за тези, които още разглеждат магазина.
   const [tab, setTab] = React.useState<'upload' | 'link'>('upload');
@@ -72,8 +74,50 @@ export default function ProbaPage() {
 
   // Идва от сесията, щом екраните се вържат за API-тата.
   const credits: number = 12;
+  const [starting, setStarting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const hasPhoto = true;
   const ready = hasPhoto && (tab === 'link' ? link.trim().length > 0 : garment);
+
+  /**
+   * Пускането на генерация.
+   *
+   * Копчето се заключва за целия път, не само докато лети заявката. Иначе
+   * двойното натискане пуска две генерации и харчи два кредита — точно
+   * това, срещу което е цялата защита от страна на сървъра.
+   */
+  async function start(): Promise<void> {
+    if (starting || !ready) return;
+    setStarting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          personKey: 'PLACEHOLDER',
+          garmentKey: 'PLACEHOLDER',
+          aspectRatio: ratio,
+        }),
+      });
+
+      const data = (await response.json()) as
+        | { generationId: string }
+        | { error: { message: string } };
+
+      if (!response.ok || !('generationId' in data)) {
+        setError('error' in data ? data.error.message : 'Нещо се обърка. Пробвай пак.');
+        setStarting(false);
+        return;
+      }
+
+      router.push(`/proba/${data.generationId}`);
+    } catch {
+      setError('Няма връзка. Провери интернета и пробвай пак.');
+      setStarting(false);
+    }
+  }
 
   return (
     <main className="px-5 pt-6">
@@ -176,8 +220,15 @@ export default function ProbaPage() {
           и тихо до него. Едното е действие, другото е настройка — и това
           трябва да си личи от разстояние, без да се чете. */}
       <div className="mt-8 flex items-center gap-2.5">
-        <Button variant="action" size="lg" block disabled={!ready}>
-          {ready ? 'Генерирай · 1 кредит' : 'Първо избери дреха'}
+        <Button
+          variant="action"
+          size="lg"
+          block
+          disabled={!ready}
+          busy={starting}
+          onClick={() => void start()}
+        >
+          {starting ? 'Пускаме я...' : ready ? 'Генерирай · 1 кредит' : 'Първо избери дреха'}
         </Button>
 
         <button
@@ -189,9 +240,13 @@ export default function ProbaPage() {
         </button>
       </div>
 
-      <p className="mt-3 text-center text-[12.5px] text-ink-45">
-        Имаш {credits} {credits === 1 ? 'кредит' : 'кредита'}.
-      </p>
+      {error ? (
+        <p className="enter-rise mt-3 text-center text-[13px] text-danger">{error}</p>
+      ) : (
+        <p className="mt-3 text-center text-[12.5px] text-ink-45">
+          Имаш {credits} {credits === 1 ? 'кредит' : 'кредита'}.
+        </p>
+      )}
 
       {/* ── Настройките ─────────────────────────────────────────────────── */}
       <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Настройки">

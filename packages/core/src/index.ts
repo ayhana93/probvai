@@ -119,6 +119,9 @@ export type { BrakeReason, BrakeResult } from './limits';
 
 export { applyWatermark, shouldWatermark, hasEverPurchased } from './watermark';
 
+export { buildShareImage } from './share';
+export type { ShareImageOptions } from './share';
+
 // ── Дреха от линк ──────────────────────────────────────────────────────────
 export { extractGarment } from './extract-garment';
 export type { ExtractResult, ExtractFailure } from './extract-garment';

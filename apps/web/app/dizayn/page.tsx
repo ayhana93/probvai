@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { BottomNav } from '@/components/bottom-nav';
+import { BeforeAfter } from '@/components/ui/before-after';
 import { Button, IconButton } from '@/components/ui/button';
 import { Patch, PatchHeading, type Material } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
@@ -96,6 +97,24 @@ export default function DizaynPage() {
         </div>
         <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
           Едно лайм копче на екран. Сложиш ли две, нито едно не е главното.
+        </p>
+      </Row>
+
+      <Row title="Преди и след">
+        <BeforeAfter
+          beforeSrc="/demo/predi.jpg"
+          afterSrc="/demo/sled.jpg"
+          className="aspect-[3/4] w-full"
+        />
+        <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
+          Отдолу има прозрачен нативен плъзгач. Той носи наготово стрелките
+          на клавиатурата, четенето от екранен четец и правилното влачене,
+          когато пръстът излезе от елемента. Видимото е наше, поведението е
+          на системата.
+        </p>
+        <p className="mt-2 text-[12.5px] leading-snug text-ink-45">
+          Реже се с clip-path, не с широчина: широчината кара браузъра да
+          преизчислява разположението при всеки кадър.
         </p>
       </Row>
 
