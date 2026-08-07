@@ -84,3 +84,31 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["node", "apps/web/server.js"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Работникът
+#
+# Отделен контейнер от същия образ. Една генерация държи процеса зает
+# 20–60 секунди — не бива да е в същия процес, който отговаря на заявките.
+#
+# Носи целия node_modules, защото се пуска от TypeScript източника през tsx.
+# Образът е по-голям от уеб контейнера, но е фонов процес и това не пречи.
+# Паралелността се вдига с още КОНТЕЙНЕРИ, не с повече нишки.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM base AS worker
+
+ENV NODE_ENV=production
+
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.base.json ./tsconfig.base.json
+
+USER nextjs
+
+CMD ["node_modules/.bin/tsx", "scripts/worker.ts"]

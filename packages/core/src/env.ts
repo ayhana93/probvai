@@ -17,6 +17,15 @@ const schema = z.object({
   APP_URL: z.string().url().default('http://localhost:3000'),
   APP_VERSION: z.string().default('dev'),
 
+  // „Днес" за дневния таван значи днес в тази зона, не в UTC.
+  APP_TIMEZONE: z.string().default('Europe/Sofia'),
+
+  // Спира ВСИЧКИ генерации. Ползва се при поддръжка и при авария.
+  MAINTENANCE_MODE: z
+    .enum(['0', '1', 'true', 'false'])
+    .default('0')
+    .transform((value) => value === '1' || value === 'true'),
+
   // ── Пари и аварийни спирачки ─────────────────────────────────────────────
   // Без стойност по подразбиране. Приложение без таван на разхода е
   // приложение, което може да ни струва €3000 за една нощ.
@@ -83,6 +92,18 @@ const schema = z.object({
   ADMIN_EMAILS: z.string().optional(),
   ADMIN_ALERT_EMAIL: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+
+  // ── Извличане на дреха от линк ───────────────────────────────────────────
+  EXTRACT_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+  EXTRACT_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
+
+  // Партньорски мрежи. `{url}` се заменя с адреса на продукта.
+  AFFILIATE_ADMITAD_TEMPLATE: z.string().optional(),
+  AFFILIATE_AWIN_TEMPLATE: z.string().optional(),
+  AFFILIATE_PROFITSHARE_TEMPLATE: z.string().optional(),
+
+  // ── Воден знак ───────────────────────────────────────────────────────────
+  WATERMARK_TEXT: z.string().default('probvai.bg'),
 });
 
 export type Env = z.infer<typeof schema>;

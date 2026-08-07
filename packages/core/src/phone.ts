@@ -22,7 +22,7 @@ import { reconcileFreeCredits, type FreeCreditResult } from './free-credits';
 import { isPlausiblePhone, normalizePhone, sha256Hex } from './hash';
 import { sendSms } from './sms';
 
-export type StartFailure =
+export type PhoneStartFailure =
   | 'INVALID_PHONE'
   | 'PHONE_IN_USE'
   | 'ALREADY_VERIFIED'
@@ -31,9 +31,9 @@ export type StartFailure =
   | 'SMS_FAILED'
   | 'USER_NOT_FOUND';
 
-export type StartResult =
+export type PhoneStartResult =
   | { ok: true; phone: string; expiresAt: Date }
-  | { ok: false; reason: StartFailure };
+  | { ok: false; reason: PhoneStartFailure };
 
 export type VerifyFailure =
   | 'NO_PENDING_CODE'
@@ -65,7 +65,7 @@ function hashesMatch(a: string, b: string): boolean {
 export async function startPhoneVerification(
   userId: string,
   rawPhone: string,
-): Promise<StartResult> {
+): Promise<PhoneStartResult> {
   const system = dbSystem();
 
   const phone = normalizePhone(rawPhone);

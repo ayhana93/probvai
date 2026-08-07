@@ -74,8 +74,8 @@ export type { SmsResult } from './sms';
 
 export { startPhoneVerification, verifyPhoneCode } from './phone';
 export type {
-  StartResult,
-  StartFailure,
+  PhoneStartResult,
+  PhoneStartFailure,
   VerifyResult,
   VerifyFailure,
 } from './phone';
@@ -96,6 +96,48 @@ export type {
   RunInput,
   PollResult,
 } from './providers';
+
+export { providerByName, ProviderError } from './providers';
+export type { ProviderErrorCode } from './providers';
+
+// ── Генерация ──────────────────────────────────────────────────────────────
+export { startGeneration, failGeneration } from './generation';
+export type {
+  StartGenerationInput,
+  StartGenerationResult,
+  StartGenerationFailure,
+} from './generation';
+
+export {
+  checkAllBrakes,
+  checkCooldown,
+  checkGlobalDailyCap,
+  checkUserDailyLimit,
+  spentToday,
+} from './limits';
+export type { BrakeReason, BrakeResult } from './limits';
+
+export { applyWatermark, shouldWatermark, hasEverPurchased } from './watermark';
+
+// ── Дреха от линк ──────────────────────────────────────────────────────────
+export { extractGarment } from './extract-garment';
+export type { ExtractResult, ExtractFailure } from './extract-garment';
+
+export { MERCHANTS, merchantFor, affiliateUrl } from './merchants';
+export type { Merchant, AffiliateNetwork } from './merchants';
+
+export {
+  safeFetch,
+  parsePublicUrl,
+  isPrivateAddress,
+  BlockedRequestError,
+} from './net-guard';
+export type { BlockedReason } from './net-guard';
+
+export { metaContent, linkHref, pageTitle } from './html-meta';
+
+// ── Време ──────────────────────────────────────────────────────────────────
+export { startOfDay, daysAgo } from './time';
 
 // ── Опашка ─────────────────────────────────────────────────────────────────
 export { QUEUES, getBoss, stopBoss } from './queue';

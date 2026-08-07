@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@probvai/core', '@probvai/db'],
 
   // Пакети с нативни части — Next не бива да ги бъндълва.
-  serverExternalPackages: ['@prisma/client', 'pg-boss', 'sharp'],
+  serverExternalPackages: ['@prisma/client', 'pg-boss', 'sharp', 'undici'],
 
   eslint: {
     ignoreDuringBuilds: false,
