@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { MascotButton } from '@/components/mascot';
 import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
 import { Tabs } from '@/components/ui/tabs';
@@ -61,14 +62,18 @@ function StepBadge({ n, done }: { n: number; done?: boolean }) {
 }
 
 export default function ProbaPage() {
-  const [tab, setTab] = React.useState<'link' | 'upload'>('link');
+  // Качването е по подразбиране. Повечето хора вече имат снимката в
+  // телефона си; линкът е за тези, които още разглеждат магазина.
+  const [tab, setTab] = React.useState<'upload' | 'link'>('upload');
   const [ratio, setRatio] = React.useState<Ratio>('auto');
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [ratioOpen, setRatioOpen] = React.useState(false);
   const [link, setLink] = React.useState('');
+  const [garment, setGarment] = React.useState(false);
 
+  const credits = 12;
   const hasPhoto = true;
-  const ready = hasPhoto && (tab === 'link' ? link.trim().length > 0 : false);
+  const ready = hasPhoto && (tab === 'link' ? link.trim().length > 0 : garment);
 
   return (
     <main className="px-5 pt-6">
@@ -126,8 +131,8 @@ export default function ProbaPage() {
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'link', label: 'Постави линк' },
             { value: 'upload', label: 'Качи снимка' },
+            { value: 'link', label: 'Постави линк' },
           ]}
         />
 
@@ -148,13 +153,15 @@ export default function ProbaPage() {
           </div>
         ) : (
           <button
+            onClick={() => setGarment((value) => !value)}
             className={cn(
               'pressable enter-pop mt-3 grid h-32 w-full place-items-center',
-              'rounded-[var(--radius-card)] border-2 border-dashed border-ink-25 bg-paper-2',
+              'rounded-[var(--radius-card)] border-2 border-dashed bg-paper-2',
+              garment ? 'border-lime-deep' : 'border-ink-25',
             )}
           >
             <span className="text-[14px] font-semibold text-ink-45">
-              Избери снимка от телефона
+              {garment ? 'Снимката е избрана' : 'Избери снимка от телефона'}
             </span>
           </button>
         )}
@@ -164,16 +171,22 @@ export default function ProbaPage() {
         </p>
       </section>
 
-      {/* ── Действието ──────────────────────────────────────────────────── */}
-      <div className="mt-8 flex gap-2.5">
-        <Button variant="action" size="lg" block disabled={!ready}>
-          Генерирай · 1 кредит
-        </Button>
+      {/* ── Действието ──────────────────────────────────────────────────────
+          Копчето Е героят. Няма правоъгълник около него — самата фигура
+          се натиска. Зъбното колело стои отстрани, малко и тихо: то е
+          настройка, не действие. */}
+      <div className="relative mt-9">
+        <MascotButton
+          credits={credits}
+          disabled={!ready}
+          label={ready ? 'Генерирай' : 'Първо избери дреха'}
+          hint={ready ? '1 кредит' : undefined}
+        />
 
         <button
           aria-label="Настройки на генерирането"
           onClick={() => setSettingsOpen(true)}
-          className="pressable grid size-14 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-70"
+          className="pressable absolute right-1 top-6 grid size-12 place-items-center rounded-full bg-paper-2 text-ink-70"
         >
           <GearIcon />
         </button>

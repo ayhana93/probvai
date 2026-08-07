@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Mascot, type MascotState } from '@/components/mascot';
+import { Mascot, MascotButton, MOOD_THRESHOLDS, type MascotMood } from '@/components/mascot';
 import { Button, IconButton } from '@/components/ui/button';
 import { Patch, PatchHeading, type Material } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
@@ -28,15 +28,15 @@ const MATERIALS: { key: Material; label: string; note: string }[] = [
   { key: 'paper', label: 'Хартия', note: 'основата' },
 ];
 
-const MASCOTS: { credits: number; state: MascotState; days: number; label: string }[] = [
-  { credits: 0, state: 'idle', days: 0, label: '0 кредита' },
-  { credits: 3, state: 'idle', days: 0, label: '1–4' },
-  { credits: 12, state: 'idle', days: 0, label: '5 и повече' },
-  { credits: 25, state: 'idle', days: 0, label: 'пълна' },
-  { credits: 8, state: 'idle', days: 9, label: 'не си идвала' },
-  { credits: 8, state: 'generating', days: 0, label: 'работи' },
-  { credits: 8, state: 'success', days: 0, label: 'готово' },
-  { credits: 2, state: 'error', days: 0, label: 'не се получи' },
+const MASCOTS: { mood: MascotMood; label: string; when: string }[] = [
+  { mood: 'empty', label: 'празен', when: '0 кредита' },
+  { mood: 'low', label: 'малко', when: `1–${MOOD_THRESHOLDS.happy - 1}` },
+  { mood: 'happy', label: 'доволен', when: `${MOOD_THRESHOLDS.happy}–${MOOD_THRESHOLDS.full - 1}` },
+  { mood: 'full', label: 'пълен', when: `${MOOD_THRESHOLDS.full}+` },
+  { mood: 'stale', label: 'цупи се', when: `${MOOD_THRESHOLDS.staleDays}+ дни` },
+  { mood: 'working', label: 'работи', when: 'генерира' },
+  { mood: 'done', label: 'готово', when: 'успех' },
+  { mood: 'failed', label: 'провал', when: 'грешка' },
 ];
 
 function Row({ title, children }: { title: string; children: React.ReactNode }) {
@@ -82,19 +82,30 @@ export default function DizaynPage() {
       <Row title="Героят">
         <div className="grid grid-cols-4 gap-y-5">
           {MASCOTS.map((item) => (
-            <div key={item.label} className="flex flex-col items-center gap-1.5">
-              <Mascot
-                credits={item.credits}
-                state={item.state}
-                daysSinceLastUse={item.days}
-                size={70}
-              />
-              <span className="text-center text-[10px] leading-tight text-ink-45">
+            <div key={item.mood} className="flex flex-col items-center gap-1">
+              <Mascot mood={item.mood} size={72} />
+              <span className="text-center text-[10.5px] font-semibold leading-tight">
                 {item.label}
+              </span>
+              <span className="text-center text-[9.5px] leading-tight text-ink-45">
+                {item.when}
               </span>
             </div>
           ))}
         </div>
+        <p className="mt-4 text-[12.5px] leading-snug text-ink-45">
+          Прагът {MOOD_THRESHOLDS.full} не е случаен: безплатните кредити
+          стигат най-много до 5, а най-малката покупка е 25. Значи над
+          {' '}{MOOD_THRESHOLDS.full} стига само човек, който е платил —
+          и празничното лице е негово.
+        </p>
+
+        <div className="mt-7 rounded-[var(--radius-card)] bg-paper-2 py-6">
+          <MascotButton credits={12} label="Генерирай" hint="1 кредит" />
+        </div>
+        <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
+          Героят Е копчето за нова проба. Няма правоъгълник около него.
+        </p>
       </Row>
 
       <Row title="Копчета">

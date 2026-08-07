@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/logo';
 import { Mascot } from '@/components/mascot';
 import { Patch, PatchHeading } from '@/components/ui/patch';
 import { Sparks, Underscribble, Zigzag } from '@/components/ui/scribble';
@@ -30,9 +31,16 @@ export default function HomePage() {
   const credits = 12;
 
   return (
-    <main className="px-5 pt-6">
+    <main className="px-5 pt-5">
+      {/* ── Логото ────────────────────────────────────────────────────────
+          Стои само тук и на входа. Марката се показва веднъж на екран —
+          повтори ли се, спира да значи нещо. */}
+      <div className="flex justify-center pb-1">
+        <Logo width={188} priority />
+      </div>
+
       {/* ── Балансът ──────────────────────────────────────────────────────── */}
-      <section className="flex items-center gap-4">
+      <section className="mt-4 flex items-center gap-4">
         <Patch material="leather" tilt={-1.5} className="flex-1 px-5 py-4">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
             Твоят баланс

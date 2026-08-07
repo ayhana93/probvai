@@ -1,241 +1,240 @@
 /**
  * ГЕРОЯТ
  *
- * Тениска-парче, изрязана в езика на логото: тъмно парче, светла форма
- * отвътре — точно както кожената „Б" носи бяла буква.
+ * Рисунките са твои — стоят в `apps/web/public/mascot/`. Кодът тук решава
+ * само едно: КОЯ рисунка се показва в кой момент.
  *
- * ═══ КРЕДИТИТЕ СА НИВОТО НА МАТЕРИАЛА ═══
+ * ═══ КОЯ ЕМОЦИЯ ПРИ КОЛКО КРЕДИТА ═══
  *
- * Празната тениска е само шев върху хартия. С всеки кредит материалът се
- * качва отдолу нагоре. При 25 и повече е пълна. Това е единственият
- * индикатор за баланс, който потребителката вижда, без да чете число.
+ *   0        празен      сив, умърлушен
+ *   1–4      малко       блед, спокоен
+ *   5–14     доволен     лайм, усмихнат
+ *   15+      пълен       лайм, широка усмивка, шапка с каре и искри
  *
- * ═══ ЗАЩО ДВИЖЕНИЕТО Е НА CSS, А НЕ НА JAVASCRIPT ═══
+ * Прагът 15 не е случаен. Безплатните кредити стигат най-много до 5
+ * (3 + имейл + телефон), а най-малката покупка е 25. Значи над 15 стига
+ * САМО човек, който е платил — и празничното лице е негово.
  *
- * Всички състояния тук са предварително известни — полюшване, трепване,
- * пулс. CSS анимациите вървят извън главната нишка и остават гладки,
- * докато страницата зарежда. Същото на `requestAnimationFrame` изпуска
- * кадри точно тогава, когато най-си личи.
+ * Състоянията от работата бият над кредитите: докато тече генерация,
+ * няма значение колко кредита има.
  *
- * Пружини се ползват за жестове, които могат да бъдат прекъснати. Тук
- * такива няма.
+ * ═══ ЗА АНИМАЦИЯТА ═══
+ *
+ * Рисунката е плоска картинка — очите в нея не могат да се движат. Затова
+ * животът идва от формата: тихо носене нагоре-надолу и кратко „сплескване"
+ * на всеки няколко секунди. В езика на анимацията сплескването се чете
+ * като мигване, а не като трепване.
+ *
+ * Всичко е на CSS: върви извън главната нишка и не пада кадри, докато
+ * страницата зарежда.
  */
 
 'use client';
 
 import * as React from 'react';
 import { cn } from '@/lib/cn';
+import { useImageStatus } from '@/lib/use-image-status';
 
 export type MascotState = 'idle' | 'generating' | 'success' | 'error';
 
+export type MascotMood =
+  | 'empty'
+  | 'low'
+  | 'happy'
+  | 'full'
+  | 'stale'
+  | 'working'
+  | 'done'
+  | 'failed';
+
+/** Праговете. Едно място, лесни за въртене. */
+export const MOOD_THRESHOLDS = {
+  /** Под това е „малко". */
+  happy: 5,
+  /** Над това е „пълен" — стига се само с покупка. */
+  full: 15,
+  /** След толкова дни без употреба героят се цупи. */
+  staleDays: 7,
+} as const;
+
+const LABELS: Record<MascotMood, string> = {
+  empty: 'Нямаш кредити',
+  low: 'Остават ти малко кредити',
+  happy: 'Имаш кредити',
+  full: 'Имаш много кредити',
+  stale: 'Отдавна не си пробвала нищо',
+  working: 'Пробата се прави',
+  done: 'Готово',
+  failed: 'Не се получи',
+};
+
+/** Как се движи всяко настроение. */
+const MOTION: Record<MascotMood, string> = {
+  empty: 'mascot-still',
+  low: 'mascot-float-slow',
+  happy: 'mascot-float',
+  full: 'mascot-float',
+  stale: 'mascot-tap',
+  working: 'mascot-work',
+  done: 'mascot-hop',
+  failed: 'mascot-still',
+};
+
+/** Кои настроения мигат. „Работи" вече е със затворени очи. */
+const BLINKS = new Set<MascotMood>(['low', 'happy', 'full', 'stale']);
+
+export function moodFor(
+  credits: number,
+  state: MascotState = 'idle',
+  daysSinceLastUse = 0,
+): MascotMood {
+  if (state === 'generating') return 'working';
+  if (state === 'success') return 'done';
+  if (state === 'error') return 'failed';
+
+  if (credits <= 0) return 'empty';
+  if (daysSinceLastUse > MOOD_THRESHOLDS.staleDays) return 'stale';
+  if (credits < MOOD_THRESHOLDS.happy) return 'low';
+  if (credits < MOOD_THRESHOLDS.full) return 'happy';
+  return 'full';
+}
+
 export type MascotProps = {
-  credits: number;
+  credits?: number;
   state?: MascotState;
   daysSinceLastUse?: number;
+  /** Прескача пресмятането по кредити. Ползва се в демото. */
+  mood?: MascotMood;
   size?: number;
+  /** Горе на екрана — казва на браузъра да я тегли първа. */
+  eager?: boolean;
   className?: string;
 };
 
-/** Изражението се избира по състояние, не по вкус. */
-type Face = 'happy' | 'neutral' | 'sad' | 'sulky' | 'asleep' | 'thrilled';
-
-/** Пълна тениска при толкова кредита. */
-const FULL_AT = 25;
-
-const TEE =
-  'M48 26 Q60 37 72 26 Q86 29 98 39 L110 60 L92 70 L87 63 L87 100 L33 100 L33 63 L28 70 L10 60 L22 39 Q34 29 48 26 Z';
-
-function pickFace(credits: number, state: MascotState, days: number): Face {
-  if (state === 'generating') return 'asleep';
-  if (state === 'success') return 'thrilled';
-  if (state === 'error') return 'sad';
-  if (credits === 0) return 'sad';
-  if (days > 7) return 'sulky';
-  if (credits < 5) return 'neutral';
-  return 'happy';
-}
-
-function pickMotion(credits: number, state: MascotState, days: number): string {
-  if (state === 'generating') return 'mascot-work';
-  if (state === 'success') return 'mascot-hop';
-  if (credits === 0) return 'mascot-droop';
-  if (days > 7) return 'mascot-tap';
-  if (credits < 5) return 'mascot-twitch';
-  return 'mascot-sway';
-}
-
-function Eyes({ face }: { face: Face }) {
-  const ink = 'var(--color-ink)';
-
-  if (face === 'asleep') {
-    return (
-      <g stroke={ink} strokeWidth="4" strokeLinecap="round" fill="none">
-        <path d="M44 76 Q49 80 54 76" />
-        <path d="M66 76 Q71 80 76 76" />
-      </g>
-    );
-  }
-  if (face === 'happy' || face === 'thrilled') {
-    // Полумесеци нагоре — усмихнати очи.
-    return (
-      <g stroke={ink} strokeWidth="4.5" strokeLinecap="round" fill="none">
-        <path d="M44 78 Q49 72 54 78" />
-        <path d="M66 78 Q71 72 76 78" />
-      </g>
-    );
-  }
-  if (face === 'sulky') {
-    // Присвити — тесни хоризонтални цепки.
-    return (
-      <g stroke={ink} strokeWidth="4.5" strokeLinecap="round">
-        <path d="M44 77 L54 77" />
-        <path d="M66 77 L76 77" />
-      </g>
-    );
-  }
-  if (face === 'sad') {
-    // Гледа надолу: зеницата е ниско в окото.
-    return (
-      <g fill={ink}>
-        <circle cx="49" cy="79" r="4" />
-        <circle cx="71" cy="79" r="4" />
-      </g>
-    );
-  }
-  return (
-    <g fill={ink}>
-      <circle cx="49" cy="77" r="4.2" />
-      <circle cx="71" cy="77" r="4.2" />
-    </g>
-  );
-}
-
-function Mouth({ face }: { face: Face }) {
-  const ink = 'var(--color-ink)';
-  const base = { stroke: ink, strokeWidth: 4.5, strokeLinecap: 'round' as const, fill: 'none' };
-
-  switch (face) {
-    case 'thrilled':
-      return <path d="M50 86 Q60 98 70 86 Q60 92 50 86 Z" fill={ink} />;
-    case 'happy':
-      return <path d="M52 87 Q60 94 68 87" {...base} />;
-    case 'neutral':
-      return <path d="M53 89 L67 89" {...base} />;
-    case 'sulky':
-      return <path d="M53 91 Q60 87 67 91" {...base} />;
-    case 'asleep':
-      return <path d="M55 89 Q60 92 65 89" {...base} />;
-    case 'sad':
-    default:
-      return <path d="M52 92 Q60 84 68 92" {...base} />;
-  }
-}
-
-function Confetti() {
-  const bits = [
-    { x: 18, y: 30, c: 'var(--color-lime)', d: 0 },
-    { x: 100, y: 34, c: 'var(--color-violet)', d: 60 },
-    { x: 30, y: 92, c: 'var(--color-orange)', d: 120 },
-    { x: 96, y: 88, c: 'var(--color-denim)', d: 40 },
-    { x: 60, y: 16, c: 'var(--color-violet-soft)', d: 90 },
-  ];
-  return (
-    <g aria-hidden="true">
-      {bits.map((bit, i) => (
-        <rect
-          key={i}
-          x={bit.x}
-          y={bit.y}
-          width="6"
-          height="9"
-          rx="1.5"
-          fill={bit.c}
-          className="mascot-confetti"
-          style={{ animationDelay: `${bit.d}ms`, transformOrigin: `${bit.x + 3}px ${bit.y + 4}px` }}
-        />
-      ))}
-    </g>
-  );
-}
-
 export function Mascot({
+  credits = 0,
+  state = 'idle',
+  daysSinceLastUse = 0,
+  mood: forced,
+  size = 72,
+  eager,
+  className,
+}: MascotProps) {
+  const image = useImageStatus();
+  const mood = forced ?? moodFor(credits, state, daysSinceLastUse);
+
+  // Докато рисунките ги няма, показваме нарочно заместващо петно, а не
+  // счупена картинка. Така екранът изглежда недовършен, не развален.
+  if (image.failed) {
+    return (
+      <span
+        role="img"
+        aria-label={LABELS[mood]}
+        title={`Липсва /mascot/${mood}.png`}
+        style={{ width: size, height: size }}
+        className={cn(
+          'grid shrink-0 place-items-center rounded-full',
+          'border-2 border-dashed border-ink-25 bg-paper-2 text-ink-25',
+          className,
+        )}
+      >
+        <span className="text-[9px] font-semibold uppercase leading-none tracking-wide">
+          {mood}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className={cn('block shrink-0', MOTION[mood], className)}
+    >
+      <span className={cn('block size-full', BLINKS.has(mood) && 'mascot-blink')}>
+        {/* Обикновен <img>, не next/image: рисунките са малки и статични,
+            а тук ни трябва `onError`, за да покажем заместващото петно. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={image.ref}
+          src={`/mascot/${mood}.png`}
+          alt={LABELS[mood]}
+          width={size}
+          height={size}
+          draggable={false}
+          loading={eager ? 'eager' : 'lazy'}
+          fetchPriority={eager ? 'high' : 'auto'}
+          onError={image.onError}
+          className="size-full select-none object-contain"
+        />
+      </span>
+    </span>
+  );
+}
+
+/**
+ * ГЕРОЯТ КАТО КОПЧЕ
+ *
+ * Големият бутон за нова проба. Няма правоъгълник около него — самата
+ * фигура е копчето.
+ *
+ * Затова тук има повече грижа, отколкото за обикновено копче:
+ *   • областта за натискане е кръгла и стига до ръба на фигурата
+ *   • при натискане се свива на 0.94 — по-силно от обикновено копче,
+ *     защото меката фигура трябва да отговори меко
+ *   • изключеното състояние НЕ е избледняване, а смяна на изражението:
+ *     героят не може да работи и го показва с лицето си
+ */
+export function MascotButton({
   credits,
   state = 'idle',
   daysSinceLastUse = 0,
-  size = 72,
+  disabled,
+  size = 148,
+  label,
+  hint,
+  onClick,
   className,
-}: MascotProps) {
-  const id = React.useId();
-  const level = Math.min(1, Math.max(0, credits / FULL_AT));
-
-  // Силуетът заема от y=26 до y=100. Материалът се качва в тези граници.
-  const top = 26;
-  const bottom = 100;
-  const fillTop = bottom - (bottom - top) * level;
-
-  const face = pickFace(credits, state, daysSinceLastUse);
-  const motion = pickMotion(credits, state, daysSinceLastUse);
-
-  const label =
-    state === 'generating'
-      ? 'Пробата се прави'
-      : state === 'success'
-        ? 'Готово'
-        : credits === 0
-          ? 'Нямаш кредити'
-          : `${credits} ${credits === 1 ? 'кредит' : 'кредита'}`;
+}: {
+  credits: number;
+  state?: MascotState;
+  daysSinceLastUse?: number;
+  disabled?: boolean;
+  size?: number;
+  label: string;
+  hint?: string;
+  onClick?: () => void;
+  className?: string;
+}) {
+  const mood = disabled && state === 'idle' ? 'empty' : moodFor(credits, state, daysSinceLastUse);
+  const busy = state === 'generating';
 
   return (
-    <svg
-      viewBox="0 0 120 120"
-      width={size}
-      height={size}
-      role="img"
-      aria-label={label}
-      className={cn(motion, className)}
-    >
-      <defs>
-        <clipPath id={`tee-${id}`}>
-          <path d={TEE} />
-        </clipPath>
-        <linearGradient id={`fill-${id}`} x1="0" y1="1" x2="0.35" y2="0">
-          <stop offset="0%" stopColor="var(--color-lime-deep)" />
-          <stop offset="100%" stopColor="var(--color-lime)" />
-        </linearGradient>
-      </defs>
+    <div className={cn('flex flex-col items-center', className)}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled || busy}
+        aria-busy={busy || undefined}
+        className={cn(
+          'group relative grid place-items-center rounded-full',
+          'transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)]',
+          'active:scale-[0.94] disabled:cursor-not-allowed',
+        )}
+        style={{ width: size, height: size }}
+      >
+        {/* Мекото петно отдолу: фигурата стои върху нещо, не виси. */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute inset-0 rounded-full transition-opacity duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+            disabled ? 'bg-paper-2 opacity-70' : 'bg-lime/25',
+          )}
+        />
+        <Mascot mood={mood} size={size} eager className="relative" />
+      </button>
 
-      {state === 'success' && <Confetti />}
-
-      {/* Празната тениска: хартия със шев. */}
-      <path d={TEE} fill="var(--color-paper)" />
-
-      {/* Материалът, качен до нивото на кредитите.
-          Горният ръб е леко вълнист — права линия изглежда като сложена
-          отгоре кутия, вълната изглежда като нещо, което се е наляло. */}
-      {level > 0 && (
-        <g clipPath={`url(#tee-${id})`}>
-          <path
-            d={`M0 ${fillTop} Q30 ${fillTop - 3.5} 60 ${fillTop} T120 ${fillTop} L120 104 L0 104 Z`}
-            fill={`url(#fill-${id})`}
-            className="mascot-fill"
-          />
-        </g>
-      )}
-
-      {/* Контурът е последен, за да е чист над материала. */}
-      <path
-        d={TEE}
-        fill="none"
-        stroke="var(--color-ink)"
-        strokeWidth="5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-
-      <g className="mascot-face">
-        <Eyes face={face} />
-        <Mouth face={face} />
-      </g>
-    </svg>
+      <span className="display mt-3 text-[17px]">{label}</span>
+      {hint && <span className="mt-1 text-[13px] text-ink-45">{hint}</span>}
+    </div>
   );
 }
