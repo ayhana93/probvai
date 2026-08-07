@@ -311,5 +311,16 @@ CREATE POLICY support_messages_self_write ON public.support_messages
 -- 16. Prisma миграционната таблица
 -- ---------------------------------------------------------------------------
 -- Приложението няма работа с историята на миграциите.
+-- Таблицата може още да не съществува (например в сенчестата база, с която
+-- Prisma проверява нови миграции), затова пазим извикването.
 
-REVOKE ALL ON TABLE public._prisma_migrations FROM app_user, app_system, app_admin;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables
+    WHERE schemaname = 'public' AND tablename = '_prisma_migrations'
+  ) THEN
+    EXECUTE 'REVOKE ALL ON TABLE public._prisma_migrations FROM app_user, app_system, app_admin';
+  END IF;
+END
+$$;

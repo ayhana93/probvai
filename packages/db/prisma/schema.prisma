@@ -97,11 +97,12 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  accounts    Account[]
-  sessions    Session[]
-  ledger      CreditLedger[]
-  generations Generation[]
-  tickets     SupportTicket[]
+  accounts           Account[]
+  sessions           Session[]
+  ledger             CreditLedger[]
+  generations        Generation[]
+  tickets            SupportTicket[]
+  phoneVerifications PhoneVerification[]
 
   @@index([lastActiveAt])
   @@index([status])
@@ -153,6 +154,31 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// Еднократни кодове за потвърждаване на телефон.
+// Пази се само SHA-256 хеш на кода — ако някой прочете таблицата, не може
+// да влезе с прочетеното.
+model PhoneVerification {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+
+  // В международен формат: +359...
+  phone    String
+  codeHash String @map("code_hash")
+
+  // Брой грешни опити. Над лимита кодът се обезсилва.
+  attempts Int @default(0)
+
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("phone_verifications")
 }
 
 // ---------------------------------------------------------------------------

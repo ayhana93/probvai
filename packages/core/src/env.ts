@@ -35,6 +35,12 @@ const schema = z.object({
   FREE_CREDITS_EMAIL_VERIFIED: z.coerce.number().int().nonnegative().default(1),
   FREE_CREDITS_PHONE_VERIFIED: z.coerce.number().int().nonnegative().default(1),
 
+  // ── Потвърждаване на телефон ─────────────────────────────────────────────
+  PHONE_CODE_TTL_SECONDS: z.coerce.number().int().positive().default(600),
+  PHONE_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  PHONE_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
+  PHONE_MAX_SENDS_PER_DAY: z.coerce.number().int().positive().default(5),
+
   // ── Риск ─────────────────────────────────────────────────────────────────
   RISK_THRESHOLD_SMS: z.coerce.number().int().nonnegative().default(40),
   RISK_THRESHOLD_BLOCK: z.coerce.number().int().nonnegative().default(70),

@@ -7,7 +7,11 @@
 -- В production ролите се създават от миграцията (без парола), а паролите
 -- се задават отделно с `npm run db:roles`.
 
-CREATE ROLE probvai_migrator LOGIN PASSWORD 'migrator_dev' CREATEROLE;
+-- CREATEROLE: миграцията създава трите работни роли.
+-- CREATEDB:   `prisma migrate dev` прави временна сенчеста база, за да
+--             провери новата миграция. В production не е нужно —
+--             `prisma migrate deploy` не ползва сенчеста база.
+CREATE ROLE probvai_migrator LOGIN PASSWORD 'migrator_dev' CREATEROLE CREATEDB;
 
 CREATE ROLE app_user LOGIN PASSWORD 'app_user_dev';
 CREATE ROLE app_system LOGIN PASSWORD 'app_system_dev';
