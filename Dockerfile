@@ -1,10 +1,20 @@
 # syntax=docker/dockerfile:1
 #
-# ПРОБВАЙ — производствен образ.
+# ПРОБВАЙ — производственият образ на УЕБ приложението.
 #
 # Правило №1 от заданието: нищо специфично за Railway. Този образ тръгва на
 # всеки Docker хост — нужни са само променливите на средата и достъп до
 # Postgres. Никакви монтирани дискове, никакви платформени API-та.
+#
+# ═══ ЗАЩО РАБОТНИКЪТ Е В ОТДЕЛЕН ФАЙЛ ═══
+#
+# Беше етап в този Dockerfile, след `runner`. Повечето платформи — Railway
+# между тях — строят ПОСЛЕДНИЯ етап на многоетапен файл. Тоест успешен билд
+# щеше да пусне работника вместо уеб приложението, и то тихо: контейнерът
+# тръгва, здравната проверка мълчи, а сайтът просто не отговаря.
+#
+# Затова: този файл прави уеб приложението и `runner` е последен. Работникът
+# е в `Dockerfile.worker`.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # База — Debian, а не Alpine.
@@ -73,6 +83,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_module
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/prisma ./packages/db/prisma
 
+# Сглобява SQL-а за паролите на работните роли. Обикновен .mjs без
+# зависимости точно за да го изпълни голият node в този образ.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/roles-sql.mjs ./scripts/roles-sql.mjs
+
 COPY --chown=nextjs:nodejs docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
@@ -84,31 +98,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["node", "apps/web/server.js"]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Работникът
-#
-# Отделен контейнер от същия образ. Една генерация държи процеса зает
-# 20–60 секунди — не бива да е в същия процес, който отговаря на заявките.
-#
-# Носи целия node_modules, защото се пуска от TypeScript източника през tsx.
-# Образът е по-голям от уеб контейнера, но е фонов процес и това не пречи.
-# Паралелността се вдига с още КОНТЕЙНЕРИ, не с повече нишки.
-# ─────────────────────────────────────────────────────────────────────────────
-FROM base AS worker
-
-ENV NODE_ENV=production
-
-RUN groupadd --system --gid 1001 nodejs \
-  && useradd --system --uid 1001 --gid nodejs nextjs
-
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.base.json ./tsconfig.base.json
-
-USER nextjs
-
-CMD ["node_modules/.bin/tsx", "scripts/worker.ts"]

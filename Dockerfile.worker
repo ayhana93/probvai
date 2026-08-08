@@ -1,0 +1,59 @@
+# syntax=docker/dockerfile:1
+#
+# ПРОБВАЙ — работникът.
+#
+# Отделен образ от уеб приложението, а не етап в неговия Dockerfile.
+# Причината е практична: платформите строят ПОСЛЕДНИЯ етап на многоетапен
+# файл, така че двата процеса не могат да живеят в един файл, без единият
+# да краде мястото на другия.
+#
+# Отделен процес е нарочно и по същество: една генерация държи процеса зает
+# 20–60 секунди, а уеб приложението трябва да отговаря веднага.
+#
+# Паралелността се вдига с още КОНТЕЙНЕРИ от този образ, не с повече нишки.
+#
+# Пускане:  docker build -f Dockerfile.worker -t probvai-worker .
+# В Railway: на услугата се задава RAILWAY_DOCKERFILE_PATH=Dockerfile.worker
+
+FROM node:22-bookworm-slim AS base
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+
+
+FROM base AS deps
+
+COPY package.json package-lock.json ./
+COPY packages/db/package.json ./packages/db/
+COPY packages/core/package.json ./packages/core/
+COPY apps/web/package.json ./apps/web/
+
+RUN npm ci
+
+
+FROM base AS worker
+
+ENV NODE_ENV=production
+
+RUN groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nextjs
+
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs packages ./packages
+COPY --chown=nextjs:nodejs scripts ./scripts
+COPY --chown=nextjs:nodejs package.json tsconfig.base.json ./
+
+# Клиентът се генерира за платформата на образа, не се носи от машината,
+# на която е писан кодът.
+RUN npx prisma generate --schema packages/db/prisma/schema.prisma \
+  && chown -R nextjs:nodejs packages/db/src/generated
+
+USER nextjs
+
+# Работникът се пуска от TypeScript източника през tsx — няма отделен
+# билд, който да се разминава с това, което тестваме.
+CMD ["node_modules/.bin/tsx", "scripts/worker.ts"]
