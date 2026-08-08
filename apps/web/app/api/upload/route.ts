@@ -7,12 +7,27 @@ export const dynamic = 'force-dynamic';
 
 const KINDS = new Set<ImageKind>(['person', 'garment']);
 
-const MESSAGES: Record<UploadFailure, string> = {
-  EMPTY_FILE: 'Файлът е празен.',
-  TOO_LARGE: `Снимката е над ${Math.round(env.UPLOAD_MAX_BYTES / (1024 * 1024))} MB. Избери по-малка.`,
-  UNSUPPORTED_TYPE: 'Приемаме само JPG, PNG и WebP.',
-  CORRUPT_IMAGE: 'Файлът не се отваря като снимка. Пробвай друг.',
-};
+/**
+ * Съобщенията се сглобяват при ЗАЯВКА, не при зареждане на модула.
+ *
+ * Като константа отгоре, шаблонният низ четеше `env.UPLOAD_MAX_BYTES` в
+ * момента на внасяне на файла. А този файл се внася и от `next build`,
+ * в стъпката „Collecting page data" — тоест билдът искаше настройка,
+ * която е на средата, не на кода.
+ *
+ * Правилото: на ниво модул не се чете нищо от средата. Билдът произвежда
+ * образ, който тръгва на всяка среда; стойностите идват при работа.
+ */
+function messages(): Record<UploadFailure, string> {
+  const maxMb = Math.round(env.UPLOAD_MAX_BYTES / (1024 * 1024));
+
+  return {
+    EMPTY_FILE: 'Файлът е празен.',
+    TOO_LARGE: `Снимката е над ${maxMb} MB. Избери по-малка.`,
+    UNSUPPORTED_TYPE: 'Приемаме само JPG, PNG и WebP.',
+    CORRUPT_IMAGE: 'Файлът не се отваря като снимка. Пробвай друг.',
+  };
+}
 
 /**
  * POST /api/upload — качване на снимка на човек или на дреха.
@@ -45,7 +60,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // Груба проверка още преди да четем — не искаме 500 MB в паметта.
   if (file.size > env.UPLOAD_MAX_BYTES) {
-    return jsonError(413, 'TOO_LARGE', MESSAGES.TOO_LARGE);
+    return jsonError(413, 'TOO_LARGE', messages().TOO_LARGE);
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -53,7 +68,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!result.ok) {
     const status = result.reason === 'TOO_LARGE' ? 413 : 415;
-    return jsonError(status, result.reason, MESSAGES[result.reason]);
+    return jsonError(status, result.reason, messages()[result.reason]);
   }
 
   // Снимката на човека може да стане „моята снимка" за следващия път.

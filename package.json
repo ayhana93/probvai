@@ -13,6 +13,7 @@
   "scripts": {
     "dev": "npm run dev --workspace @probvai/web",
     "build": "npm run prisma:generate && npm run build --workspace @probvai/web",
+    "build:clean": "npm run prisma:generate && node scripts/build-clean.mjs",
     "start": "node scripts/start-standalone.mjs",
     "worker": "tsx scripts/worker.ts",
     "lint": "npm run lint --workspace @probvai/web",
