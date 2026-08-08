@@ -15,77 +15,61 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  CreditsIcon,
+  HomeIcon,
+  SettingsIcon,
+  WardrobeIcon,
+} from '@/components/ui/nav-icons';
 import { cn } from '@/lib/cn';
 
 type Item = {
   href: string;
   label: string;
-  icon: React.ReactNode;
+  Icon: React.ComponentType<{ className?: string }>;
 };
-
-const stroke = {
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-};
-
-const HomeIcon = (
-  <svg viewBox="0 0 24 24" className="size-[22px]" {...stroke}>
-    <path d="M4 11.5 12 4l8 7.5" />
-    <path d="M6.5 10.5V20h11v-9.5" />
-  </svg>
-);
-
-const WardrobeIcon = (
-  <svg viewBox="0 0 24 24" className="size-[22px]" {...stroke}>
-    <rect x="4" y="4" width="7" height="7" rx="2" />
-    <rect x="13" y="4" width="7" height="7" rx="2" />
-    <rect x="4" y="13" width="7" height="7" rx="2" />
-    <rect x="13" y="13" width="7" height="7" rx="2" />
-  </svg>
-);
-
-const CreditsIcon = (
-  <svg viewBox="0 0 24 24" className="size-[22px]" {...stroke}>
-    <path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z" />
-  </svg>
-);
-
-const SettingsIcon = (
-  <svg viewBox="0 0 24 24" className="size-[22px]" {...stroke}>
-    <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
-    <circle cx="16" cy="7" r="2.2" />
-    <circle cx="10" cy="17" r="2.2" />
-  </svg>
-);
 
 const LEFT: Item[] = [
-  { href: '/', label: 'Начало', icon: HomeIcon },
-  { href: '/garderob', label: 'Гардероб', icon: WardrobeIcon },
+  { href: '/', label: 'Начало', Icon: HomeIcon },
+  { href: '/garderob', label: 'Гардероб', Icon: WardrobeIcon },
 ];
 
 const RIGHT: Item[] = [
-  { href: '/krediti', label: 'Кредити', icon: CreditsIcon },
-  { href: '/nastroyki', label: 'Настройки', icon: SettingsIcon },
+  { href: '/krediti', label: 'Кредити', Icon: CreditsIcon },
+  { href: '/nastroyki', label: 'Настройки', Icon: SettingsIcon },
 ];
 
+/**
+ * ═══ ЗАЩО ТОЧКАТА Е ИЗВАДЕНА ОТ ПОТОКА ═══
+ *
+ * Беше под иконата, в същата колона. Тогава центрира се целият стълб
+ * „икона + точка", а не иконата — и всяка икона стоеше с 4 пиксела по-нагоре
+ * от центъра на кутията си. На един ред от четири това се събира и редът
+ * изглежда качен нагоре, без да си личи защо.
+ *
+ * Сега иконата е центрирана в квадрата, а точката е закачена отдолу.
+ * Иконата седи там, където окото я търси, а точката не мести нищо.
+ */
 function NavLink({ item, active }: { item: Item; active: boolean }) {
+  const { Icon } = item;
+
   return (
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'pressable flex size-11 flex-col items-center justify-center rounded-2xl',
-        active ? 'text-lime' : 'text-white/45',
+        'pressable relative grid size-12 place-items-center rounded-2xl',
+        active ? 'text-lime' : 'text-white/50',
       )}
     >
-      {item.icon}
+      <Icon />
       <span className="sr-only">{item.label}</span>
-      {/* Точката казва къде си, без да мести иконата. */}
       <span
-        className={cn('mt-1 block size-1 rounded-full', active ? 'bg-lime' : 'bg-transparent')}
+        aria-hidden="true"
+        className={cn(
+          'absolute bottom-1 size-1 rounded-full',
+          active ? 'bg-lime' : 'bg-transparent',
+        )}
       />
     </Link>
   );
@@ -174,17 +158,23 @@ export function BottomNav({ standalone }: { standalone?: boolean } = {}) {
           : 'fixed inset-x-0 bottom-0 z-40 pb-[max(14px,env(safe-area-inset-bottom))]',
       )}
     >
-      <div className="relative flex h-[62px] items-center justify-between rounded-[26px] bg-ink px-5 shadow-[0_10px_34px_-10px_rgba(20,20,22,.65)]">
-        <div className="flex gap-2">
+      {/* ═══ ЗАЩО ТРИТЕ ЧАСТИ СА С РАВНА ТЕЖЕСТ ═══
+          Преди беше `justify-between` с празнина по средата. Тогава
+          разстоянията се смятаха от ширината на групите, а те се менят с
+          големината на иконите — всяка промяна на иконите разместваше реда.
+          Сега двете двойки и дупката делят лентата на три равни части, а
+          копчето седи точно в средната. */}
+      <div className="relative flex h-[64px] items-center rounded-[26px] bg-ink px-3 shadow-[0_10px_34px_-10px_rgba(20,20,22,.65)]">
+        <div className="flex flex-1 justify-around">
           {LEFT.map((item) => (
             <NavLink key={item.href} item={item} active={pathname === item.href} />
           ))}
         </div>
 
         {/* Дупка в лентата, за да седне копчето в нея. */}
-        <div className="w-[76px]" aria-hidden="true" />
+        <div className="w-[84px] shrink-0" aria-hidden="true" />
 
-        <div className="flex gap-2">
+        <div className="flex flex-1 justify-around">
           {RIGHT.map((item) => (
             <NavLink key={item.href} item={item} active={pathname === item.href} />
           ))}
