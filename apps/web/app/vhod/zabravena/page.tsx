@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/form';
 import { Patch } from '@/components/ui/patch';
+import { R } from '@/lib/routes';
 
 /**
  * ЗАБРАВЕНА ПАРОЛА
@@ -133,7 +134,7 @@ export default function ZabravenaPage() {
           variant="action"
           size="lg"
           className="mt-7 w-full max-w-[280px]"
-          onClick={() => router.push('/vhod')}
+          onClick={() => router.push(R.login)}
         >
           Към входа
         </Button>
@@ -144,7 +145,7 @@ export default function ZabravenaPage() {
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[430px] px-6 pb-12 pt-[max(40px,calc(env(safe-area-inset-top)+20px))]">
       <Link
-        href="/vhod"
+        href={R.login}
         className="pressable -ml-1 flex size-10 items-center justify-center rounded-full text-ink-45"
         aria-label="Назад"
       >

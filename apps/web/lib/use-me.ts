@@ -23,6 +23,7 @@ export type Me = {
     firstName: string | null;
     lastName: string | null;
     gender: 'MALE' | 'FEMALE' | 'OTHER' | null;
+    phone: string | null;
     age: number | null;
     wardrobePublic: boolean;
     completed: boolean;

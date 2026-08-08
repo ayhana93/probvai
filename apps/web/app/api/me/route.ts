@@ -31,6 +31,7 @@ export async function GET(): Promise<Response> {
       firstName: true,
       lastName: true,
       gender: true,
+      phone: true,
       birthYear: true,
       wardrobePublic: true,
       profileCompletedAt: true,
@@ -67,6 +68,7 @@ export async function GET(): Promise<Response> {
         firstName: me.firstName,
         lastName: me.lastName,
         gender: me.gender,
+        phone: me.phone,
         age: ageFromBirthYear(me.birthYear),
         wardrobePublic: me.wardrobePublic,
         // Докато е `false`, интерфейсът показва екрана за довършване.

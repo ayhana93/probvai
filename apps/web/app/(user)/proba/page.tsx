@@ -10,6 +10,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { Sparks } from '@/components/ui/scribble';
 import { CheckIcon, ChevronRightIcon, CrossIcon, GearIcon } from '@/components/ui/icons';
 import { cn } from '@/lib/cn';
+import { tryOnResult } from '@/lib/routes';
 
 /**
  * ПОТОК НА ГЕНЕРАЦИЯ
@@ -159,7 +160,7 @@ function Proba() {
         return;
       }
 
-      router.push(`/proba/${data.generationId}`);
+      router.push(tryOnResult(data.generationId));
     } catch {
       setError('Няма връзка. Провери интернета и пробвай пак.');
       setStarting(false);

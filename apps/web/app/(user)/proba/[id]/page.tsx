@@ -11,6 +11,7 @@ import { Sparks } from '@/components/ui/scribble';
 import { useGeneration } from '@/lib/use-generation';
 import { useMe } from '@/lib/use-me';
 import { isStyleKey } from '@/lib/styles';
+import { R } from '@/lib/routes';
 
 /**
  * ЕДНА ПРОБА: от чакане до резултат
@@ -67,7 +68,7 @@ export default function ProbaResultPage() {
         published={view.published}
         canPublish={me?.profile.wardrobePublic ?? false}
         recommendations={view.recommendations}
-        onRetry={() => router.push('/proba')}
+        onRetry={() => router.push(R.tryOn)}
       />
     );
   }
@@ -87,7 +88,7 @@ export default function ProbaResultPage() {
         <p className="max-w-[280px] text-[15px] leading-snug text-ink-70">{message}</p>
 
         <div className="mt-7 flex w-full max-w-[280px] flex-col gap-2.5">
-          <Button variant="action" size="lg" block onClick={() => router.push('/proba')}>
+          <Button variant="action" size="lg" block onClick={() => router.push(R.tryOn)}>
             Пробвай пак
           </Button>
           <Link

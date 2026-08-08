@@ -27,8 +27,9 @@
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useMe } from '@/lib/use-me';
+import { R } from '@/lib/routes';
 
-const TARGET = '/dovarshi';
+const TARGET = R.completeProfile;
 
 export function ProfileGate() {
   const router = useRouter();

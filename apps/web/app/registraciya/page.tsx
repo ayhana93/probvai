@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
 import { Field, Choice, GenderPicker } from '@/components/ui/form';
 import { cn } from '@/lib/cn';
+import { R } from '@/lib/routes';
 
 /**
  * РЕГИСТРАЦИЯ
@@ -46,6 +47,7 @@ export default function RegistraciyaPage() {
   const [passwordConfirm, setPasswordConfirm] = React.useState('');
   const [securityQuestion, setSecurityQuestion] = React.useState<string | null>(null);
   const [securityAnswer, setSecurityAnswer] = React.useState('');
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
 
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -75,7 +77,8 @@ export default function RegistraciyaPage() {
     password.length >= 8 &&
     passwordConfirm.length > 0 &&
     securityQuestion !== null &&
-    securityAnswer.trim().length >= 2;
+    securityAnswer.trim().length >= 2 &&
+    acceptedTerms;
 
   /** Показва се веднага, а не чак след натискане на копчето. */
   const mismatch =
@@ -105,6 +108,7 @@ export default function RegistraciyaPage() {
           passwordConfirm,
           securityQuestion,
           securityAnswer: securityAnswer.trim(),
+          acceptedTerms,
         }),
       });
 
@@ -134,7 +138,7 @@ export default function RegistraciyaPage() {
       {/* ── Къде сме ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <Link
-          href={step === 1 ? '/start' : '#'}
+          href={step === 1 ? R.start : '#'}
           onClick={(event) => {
             if (step === 2) {
               event.preventDefault();
@@ -273,12 +277,63 @@ export default function RegistraciyaPage() {
               )}
             </Patch>
 
+            {/* ── Съгласието ──────────────────────────────────────────────
+                Отметката е ИЗКЛЮЧЕНА по подразбиране и трябва да се натисне.
+                Предварително сложена отметка не е съгласие — GDPR го казва
+                изрично, а и здравият разум го знае.
+
+                Копчето отдолу стои неактивно, докато я няма. Така не се
+                стига до отказ от сървъра за нещо, което се вижда на екрана. */}
+            <button
+              type="button"
+              onClick={() => setAcceptedTerms((value) => !value)}
+              aria-pressed={acceptedTerms}
+              className="pressable !mt-6 flex w-full items-start gap-3 rounded-[var(--radius-card)] bg-paper-2 px-4 py-3.5 text-left"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border-2',
+                  'transition-colors duration-[var(--dur-press)] ease-[var(--ease-out)]',
+                  acceptedTerms ? 'border-lime-deep bg-lime' : 'border-ink-25',
+                )}
+              >
+                {acceptedTerms && (
+                  <svg viewBox="0 0 24 24" className="size-3.5 text-ink" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 13l4 4 10-10" />
+                  </svg>
+                )}
+              </span>
+
+              <span className="text-[13px] leading-snug text-ink-70">
+                Прочетох и приемам{' '}
+                <Link
+                  href={R.terms}
+                  target="_blank"
+                  onClick={(event) => event.stopPropagation()}
+                  className="font-semibold text-ink underline underline-offset-2"
+                >
+                  Условията за ползване
+                </Link>{' '}
+                и{' '}
+                <Link
+                  href={R.privacy}
+                  target="_blank"
+                  onClick={(event) => event.stopPropagation()}
+                  className="font-semibold text-ink underline underline-offset-2"
+                >
+                  Политиката за поверителност
+                </Link>
+                .
+              </span>
+            </button>
+
             <Button
               type="submit"
               variant="action"
               size="lg"
               block
-              className="!mt-7"
+              className="!mt-4"
               disabled={!stepTwoReady || mismatch !== null}
               busy={busy}
             >
@@ -294,7 +349,7 @@ export default function RegistraciyaPage() {
 
       <p className={cn('mt-6 text-center text-[13.5px] text-ink-45', step === 2 && 'hidden')}>
         Вече имаш профил?{' '}
-        <Link href="/vhod" className="font-semibold text-ink underline underline-offset-4">
+        <Link href={R.login} className="font-semibold text-ink underline underline-offset-4">
           Влез
         </Link>
       </p>

@@ -22,6 +22,7 @@ import {
   WardrobeIcon,
 } from '@/components/ui/nav-icons';
 import { cn } from '@/lib/cn';
+import { R } from '@/lib/routes';
 
 type Item = {
   href: string;
@@ -31,12 +32,12 @@ type Item = {
 
 const LEFT: Item[] = [
   { href: '/', label: 'Начало', Icon: HomeIcon },
-  { href: '/garderob', label: 'Гардероб', Icon: WardrobeIcon },
+  { href: R.wardrobe, label: 'Гардероб', Icon: WardrobeIcon },
 ];
 
 const RIGHT: Item[] = [
-  { href: '/krediti', label: 'Кредити', Icon: CreditsIcon },
-  { href: '/nastroyki', label: 'Настройки', Icon: SettingsIcon },
+  { href: R.credits, label: 'Кредити', Icon: CreditsIcon },
+  { href: R.settings, label: 'Настройки', Icon: SettingsIcon },
 ];
 
 /**
@@ -96,7 +97,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
 function NewTryButton({ active }: { active: boolean }) {
   return (
     <Link
-      href="/proba"
+      href={R.tryOn}
       aria-label="Нова проба"
       aria-current={active ? 'page' : undefined}
       className={cn(
@@ -180,7 +181,7 @@ export function BottomNav({ standalone }: { standalone?: boolean } = {}) {
           ))}
         </div>
 
-        <NewTryButton active={pathname === '/proba'} />
+        <NewTryButton active={pathname === R.tryOn} />
       </div>
     </nav>
   );

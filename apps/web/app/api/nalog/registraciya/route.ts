@@ -26,6 +26,7 @@ const MESSAGES: Record<RegisterFailure, string> = {
   PASSWORDS_DIFFER: 'Двете пароли не съвпадат.',
   BAD_QUESTION: 'Избери таен въпрос.',
   BAD_ANSWER: 'Напиши отговор на тайния въпрос.',
+  TERMS_NOT_ACCEPTED: 'Трябва да приемеш условията и политиката за поверителност.',
   EMAIL_TAKEN: 'Вече има профил с този имейл. Влез вместо това.',
   PHONE_TAKEN: 'Вече има профил с този телефон.',
 };
@@ -49,6 +50,7 @@ export async function POST(request: Request): Promise<Response> {
     passwordConfirm: body.passwordConfirm,
     securityQuestion: body.securityQuestion,
     securityAnswer: body.securityAnswer,
+    acceptedTerms: body.acceptedTerms,
   });
 
   if (!result.ok) {

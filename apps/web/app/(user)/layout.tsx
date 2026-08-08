@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { BottomNav } from '@/components/bottom-nav';
 import { ProfileGate } from '@/components/profile-gate';
+import { R } from '@/lib/routes';
 
 /**
  * Обвивката на потребителското приложение.
@@ -31,7 +32,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect('/start');
+    redirect(R.start);
   }
 
   return (

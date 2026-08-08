@@ -6,6 +6,7 @@ import { Patch, PatchHeading } from '@/components/ui/patch';
 import { Sparks, Underscribble, Zigzag } from '@/components/ui/scribble';
 import { ArrowRightIcon } from '@/components/ui/icons';
 import { useMe } from '@/lib/use-me';
+import { R } from '@/lib/routes';
 
 /**
  * НАЧАЛО
@@ -101,7 +102,7 @@ export default function HomePage() {
 
       {/* ── Главното действие ─────────────────────────────────────────────── */}
       <Link
-        href="/proba"
+        href={R.tryOn}
         className="pressable mt-5 flex h-16 w-full items-center justify-between rounded-full bg-lime px-6 shadow-[0_3px_0_var(--color-lime-deep)] active:shadow-[0_1px_0_var(--color-lime-deep)]"
       >
         <span className="display text-[19px] text-ink">Нова проба</span>

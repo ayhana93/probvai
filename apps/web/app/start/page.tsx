@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { Logo } from '@/components/logo';
-import { Patch } from '@/components/ui/patch';
+import { FlowPreview } from '@/components/flow-preview';
+import { R } from '@/lib/routes';
 
 /**
  * СТАРТОВИЯТ ЕКРАН
@@ -18,11 +19,15 @@ import { Patch } from '@/components/ui/patch';
  * там всяко движение става бавене. Този екран се вижда веднъж, при първото
  * отваряне. Точно тогава си струва да оставим впечатление.
  *
- * ═══ КАКВО СЕ ДВИЖИ ═══
+ * ═══ КАКВО СЕ ПОКАЗВА ═══
  *
- * Парчетата материал плуват по осем пиксела нагоре-надолу. Не за украса —
- * те са това, от което е сглобено логото, и движението им казва „тук се
- * работи с дрехи", преди човек да е прочел и дума.
+ * Самият поток: твоята снимка → дрехата → резултатът. Преди тук стояха три
+ * парчета материал. Те бяха красиви и не отговаряха на въпроса, който всеки
+ * си задава на този екран — а той е „какво точно прави това".
+ *
+ * Втората стъпка се редува между снимка на дреха и скрийншот, защото
+ * дрехата може да дойде по два начина. „Или" в изречение се пропуска;
+ * смяна пред очите — не.
  *
  * Изреченията се сменят с размиване. Без него се виждат два текста
  * едновременно и окото ги хваща като два обекта, които се застъпват.
@@ -37,18 +42,6 @@ const PHRASES = [
   'Виж как ти стои дрехата, преди да я поръчаш.',
   'Качваш своя снимка и снимка на дрехата. Толкова.',
   'Или само линк от магазина — снимката се взима сама.',
-];
-
-/** Материалите от логото. Наклонът и закъснението са различни за всяко —
- *  еднакви стойности карат трите да плуват в такт и издават анимацията.
- *
- *  Средното НЕ е лаймово нарочно. Лаймът е цветът на действието и на този
- *  екран той принадлежи на „Създай акаунт". Голямо лаймово петно над
- *  копчето краде точно вниманието, което копчето трябва да получи. */
-const PATCHES = [
-  { material: 'denim' as const, tilt: -4, delay: '0ms', className: 'h-24 w-20' },
-  { material: 'dots' as const, tilt: 3, delay: '700ms', className: 'h-32 w-24' },
-  { material: 'foil' as const, tilt: -2, delay: '1400ms', className: 'h-24 w-20' },
 ];
 
 export default async function StartPage() {
@@ -79,33 +72,16 @@ export default async function StartPage() {
         ))}
       </div>
 
-      {/* ── Материалите ─────────────────────────────────────────────────
-          Не са снимки на дрехи нарочно: снимка на конкретна дреха обещава
-          точно нея. Парчетата казват „плат", без да обещават нищо. */}
-      <div
-        aria-hidden="true"
-        className="relative mt-9 flex flex-1 items-center justify-center gap-3"
-      >
-        {PATCHES.map((patch) => (
-          <Patch
-            key={patch.material}
-            material={patch.material}
-            className={`float-patch ${patch.className}`}
-            style={
-              {
-                '--tilt': `${patch.tilt}deg`,
-                animationDelay: patch.delay,
-                transform: `rotate(${patch.tilt}deg)`,
-              } as React.CSSProperties
-            }
-          />
-        ))}
+      {/* ── Потокът ─────────────────────────────────────────────────────── */}
+      <div className="relative mt-8 flex flex-1 flex-col items-center justify-center">
+        <FlowPreview />
 
         {/* Маркерният щрих отдолу се тегли, а не се появява. */}
         <svg
           viewBox="0 0 200 20"
-          className="absolute -bottom-2 h-5 w-52 text-violet"
+          className="mt-6 h-5 w-52 text-violet"
           fill="none"
+          aria-hidden="true"
         >
           <path
             d="M6 13c28-7 58-9 92-6 30 2 62 1 96-4"
@@ -124,14 +100,14 @@ export default async function StartPage() {
           търси, го намира веднага. */}
       <div className="stagger mt-10 space-y-2.5">
         <Link
-          href="/registraciya"
+          href={R.register}
           className="pressable flex h-14 w-full items-center justify-center rounded-full bg-lime shadow-[0_3px_0_var(--color-lime-deep)] active:shadow-[0_1px_0_var(--color-lime-deep)]"
         >
           <span className="display text-[17px] text-ink">Създай акаунт</span>
         </Link>
 
         <Link
-          href="/vhod"
+          href={R.login}
           className="pressable flex h-14 w-full items-center justify-center rounded-full bg-paper-2 text-[15px] font-semibold"
         >
           Вече имам профил
@@ -140,11 +116,11 @@ export default async function StartPage() {
 
       <p className="mt-5 text-center text-[12px] leading-relaxed text-ink-25">
         С влизането приемаш{' '}
-        <a href="/usloviya" className="underline underline-offset-2">
+        <a href={R.terms} className="underline underline-offset-2">
           Условията
         </a>{' '}
         и{' '}
-        <a href="/poveritelnost" className="underline underline-offset-2">
+        <a href={R.privacy} className="underline underline-offset-2">
           Политиката за поверителност
         </a>
         .

@@ -40,6 +40,7 @@ async function makeAccount(overrides: Record<string, unknown> = {}) {
     passwordConfirm: 'три случайни думи',
     securityQuestion: 'pet',
     securityAnswer: 'Шаро',
+    acceptedTerms: true,
     ...overrides,
   });
 
@@ -135,6 +136,23 @@ describe('Регистрация', () => {
   it('измислен таен въпрос не минава', async () => {
     expect((await makeAccount({ securityQuestion: 'какъвто си искам' })).result)
       .toMatchObject({ ok: false, reason: 'BAD_QUESTION' });
+  });
+
+  it('без съгласие с условията профил не се създава', async () => {
+    // Отметката в интерфейса не е доказателство — заявката се праща и без
+    // нея. Проверката трябва да е тук.
+    for (const value of [undefined, false, 'true', 1, null]) {
+      expect((await makeAccount({ acceptedTerms: value })).result)
+        .toMatchObject({ ok: false, reason: 'TERMS_NOT_ACCEPTED' });
+    }
+  });
+
+  it('запомня КОГА е дадено съгласието', async () => {
+    const { result } = await makeAccount();
+    if (!result.ok) throw new Error('не се създаде');
+
+    const user = await system.user.findUniqueOrThrow({ where: { id: result.userId } });
+    expect(user.termsAcceptedAt).not.toBeNull();
   });
 });
 

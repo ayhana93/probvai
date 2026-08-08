@@ -51,6 +51,8 @@ export type RegisterInput = {
   passwordConfirm: unknown;
   securityQuestion: unknown;
   securityAnswer: unknown;
+  /** Отметката „приемам условията и политиката". */
+  acceptedTerms: unknown;
 };
 
 export type RegisterFailure =
@@ -65,6 +67,7 @@ export type RegisterFailure =
   | 'PASSWORDS_DIFFER'
   | 'BAD_QUESTION'
   | 'BAD_ANSWER'
+  | 'TERMS_NOT_ACCEPTED'
   | 'EMAIL_TAKEN'
   | 'PHONE_TAKEN';
 
@@ -82,6 +85,15 @@ function cleanName(value: unknown): string | null {
 export async function registerWithPassword(
   input: RegisterInput,
 ): Promise<RegisterResult> {
+  // ═══ СЪГЛАСИЕТО СЕ ПРОВЕРЯВА И ТУК ═══
+  //
+  // Отметката в интерфейса не е доказателство за нищо — заявката се праща и
+  // без нея, с една команда. А съгласието трябва да е дадено, не показано.
+  // Затова проверката е първа: без нея профил не се създава изобщо.
+  if (input.acceptedTerms !== true) {
+    return { ok: false, reason: 'TERMS_NOT_ACCEPTED' };
+  }
+
   const firstName = cleanName(input.firstName);
   if (!firstName) return { ok: false, reason: 'BAD_FIRST_NAME' };
 
@@ -146,6 +158,9 @@ export async function registerWithPassword(
         securityAnswerHash,
         // Профилът е попълнен още тук — тази форма пита всичко.
         profileCompletedAt: new Date(),
+        // Датата е доказателството, че съгласието е дадено. Булево поле
+        // „да, съгласи се" не отговаря на въпроса КОГА и за коя версия.
+        termsAcceptedAt: new Date(),
         // Публичният гардероб се включва нарочно, от настройките. Решение с
         // необратими последствия не се взима между две полета на регистрация.
         wardrobePublic: false,

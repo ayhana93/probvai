@@ -8,6 +8,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { Sparks, Zigzag } from '@/components/ui/scribble';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
+import { R } from '@/lib/routes';
 
 /**
  * ГАРДЕРОБ
@@ -226,7 +227,7 @@ export default function GarderobPage() {
           не решиш друго.
         </p>
         <Link
-          href="/proba"
+          href={R.tryOn}
           className="pressable mt-6 inline-flex items-center rounded-full bg-lime px-7 py-3.5 shadow-[0_3px_0_var(--color-lime-deep)]"
         >
           <span className="display text-[16px]">Пробвай нещо</span>

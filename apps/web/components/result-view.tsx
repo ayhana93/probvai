@@ -32,6 +32,7 @@ import { LookFrame } from '@/components/ui/look-frame';
 import { RetryIcon, SaveIcon, ShareIcon } from '@/components/ui/icons';
 import { Sparks } from '@/components/ui/scribble';
 import { STYLE_LABELS, type StyleKey } from '@/lib/styles';
+import { R } from '@/lib/routes';
 
 export type ResultViewProps = {
   generationId: string;
@@ -200,7 +201,7 @@ export function ResultView({
           и води на едно натискане разстояние от касата. */}
       {watermarked && (
         <Link
-          href="/krediti"
+          href={R.credits}
           className="pressable mt-4 flex items-center justify-between rounded-[var(--radius-card)] bg-violet-wash px-4 py-3.5"
         >
           <span className="flex items-center gap-2">

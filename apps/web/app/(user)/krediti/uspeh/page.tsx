@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Patch } from '@/components/ui/patch';
 import { Sparks } from '@/components/ui/scribble';
+import { R } from '@/lib/routes';
 
 /**
  * СЛЕД ПЛАЩАНЕ
@@ -127,7 +128,7 @@ export default function UspehPage() {
       )}
 
       <Link
-        href={phase === 'done' ? '/proba' : '/'}
+        href={phase === 'done' ? R.tryOn : R.home}
         className="pressable mt-7 inline-flex items-center rounded-full bg-lime px-7 py-3.5 shadow-[0_3px_0_var(--color-lime-deep)]"
       >
         <span className="display text-[16px]">

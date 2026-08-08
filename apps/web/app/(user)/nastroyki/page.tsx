@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronRightIcon } from '@/components/ui/icons';
 import { useMe } from '@/lib/use-me';
 import { cn } from '@/lib/cn';
+import { R } from '@/lib/routes';
 
 /**
  * НАСТРОЙКИ
@@ -96,7 +97,7 @@ async function signOut(): Promise<void> {
     // но следващото зареждане ще я подмине — сесията ще е изтрита при
     // първия успешен опит.
   }
-  window.location.href = '/start';
+  window.location.href = R.start;
 }
 
 export default function NastroykiPage() {
@@ -235,13 +236,12 @@ export default function NastroykiPage() {
           {
             label: 'Снимка по подразбиране',
             value: me?.hasDefaultPhoto ? 'Зададена' : 'Няма',
-            href: '/nastroyki/snimka',
+            href: R.photo,
           },
-          {
-            label: 'Телефон',
-            value: me?.phoneVerified ? 'Потвърден' : 'Не е потвърден',
-            href: '/nastroyki/telefon',
-          },
+          // Телефонът се пита при регистрация и не се потвърждава — засега
+          // не изпращаме SMS. Затова тук няма стрелка: това е сведение, не
+          // място, където се влиза.
+          { label: 'Телефон', value: me?.profile.phone ?? 'Няма' },
           { label: 'Език', value: 'Български' },
         ]}
       />
@@ -257,10 +257,10 @@ export default function NastroykiPage() {
       <Group
         title="Данни"
         rows={[
-          { label: 'Свали всичките ми данни', href: '/nastroyki/eksport' },
-          { label: 'Условия за ползване', href: '/usloviya' },
-          { label: 'Политика за поверителност', href: '/poveritelnost' },
-          { label: 'Пиши ни', href: '/podkrepa' },
+          { label: 'Свали всичките ми данни', href: R.dataExport },
+          { label: 'Условия за ползване', href: R.terms },
+          { label: 'Политика за поверителност', href: R.privacy },
+          { label: 'Пиши ни', href: R.support },
         ]}
       />
 
