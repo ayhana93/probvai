@@ -73,25 +73,9 @@ export default async function StartPage() {
       </div>
 
       {/* ── Потокът ─────────────────────────────────────────────────────── */}
-      <div className="relative mt-8 flex flex-1 flex-col items-center justify-center">
+      <div className="relative mt-6 flex flex-1 flex-col items-center justify-center">
         <FlowPreview />
 
-        {/* Маркерният щрих отдолу се тегли, а не се появява. */}
-        <svg
-          viewBox="0 0 200 20"
-          className="mt-6 h-5 w-52 text-violet"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M6 13c28-7 58-9 92-6 30 2 62 1 96-4"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            className="draw-stroke"
-            style={{ '--len': 210 } as React.CSSProperties}
-          />
-        </svg>
       </div>
 
       {/* ── Изходите ────────────────────────────────────────────────────

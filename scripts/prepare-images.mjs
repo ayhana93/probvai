@@ -1,5 +1,5 @@
 /**
- * Прави копията на логото за показване.
+ * Прави копията на снимките за показване.
  *
  * ═══ ЗАЩО ОРИГИНАЛЪТ НЕ СЕ СЕРВИРА ═══
  *
@@ -19,8 +19,11 @@
  * Картинката е СЪЩАТА. Махнати са само пиксели, които никой монитор не
  * показва.
  *
- * Пускане:  npm run logo
- * След смяна на `logo.png` се пуска пак.
+ * Същото важи и за трите снимки на стартовия екран: четири файла по два
+ * мегабайта са седем мегабайта на ПЪРВИЯ екран, който вижда човек.
+ *
+ * Пускане:  npm run images
+ * След смяна на който и да е изходен файл се пуска пак.
  */
 
 import { existsSync } from 'node:fs';
@@ -79,6 +82,47 @@ async function main() {
     `\n  Съотношение за logo.tsx: ${meta.width} / ${meta.height}` +
       ` = ${(meta.width / meta.height).toFixed(4)}\n`,
   );
+
+  await flow();
+}
+
+/**
+ * Снимките на стартовия екран.
+ *
+ * ═══ ЗАЩО НЕ СЕ РЕЖАТ ═══
+ *
+ * Трите изходни файла са с много различни съотношения: човекът е висок
+ * 2:3, аутфитът е ШИРОК 5:4, скрийншотът е много висок 0.46. Едно общо
+ * съотношение би отрязало или главата на човека, или половината аутфит.
+ *
+ * Затова тук само се СМАЛЯВАТ, без рязане. Вписването в рамката е работа
+ * на `object-contain` в интерфейса — там се вижда цялата снимка, а
+ * празното отстрани е бяло, точно както при подредба на дрехи върху лист.
+ */
+async function flow() {
+  const dir = resolve(root, 'apps/web/public/flow');
+  const names = ['1-snimka', '2-drexa', '2-skrinshot', '3-rezultat'];
+
+  console.log('  Стартовият екран:\n');
+
+  for (const name of names) {
+    const source = resolve(dir, `${name}.jpg`);
+    if (!existsSync(source)) {
+      console.log(`  · ${name}.jpg — липсва, пропускам`);
+      continue;
+    }
+
+    const out = resolve(dir, `${name}-720.jpg`);
+    await sharp(source)
+      // Само по широчина. Височината се смята сама и съотношението остава.
+      .resize({ width: 720, withoutEnlargement: true })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toFile(out);
+
+    console.log(`  ✓ ${name}-720.jpg`.padEnd(28) + `${await sizeOf(out)} KB`);
+  }
+
+  console.log('');
 }
 
 main().catch((error) => {
