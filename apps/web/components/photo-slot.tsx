@@ -30,6 +30,7 @@
 import * as React from 'react';
 import { Patch, type Material } from '@/components/ui/patch';
 import { PlusIcon } from '@/components/ui/icons';
+import { compressImage } from '@/lib/compress-image';
 import { cn } from '@/lib/cn';
 
 type Props = {
@@ -105,8 +106,13 @@ export function PhotoSlot({
 
     setBusy(true);
     try {
+      // Смалява се ТУК, преди тръгване. Снимка от телефон е 4–8 MB и по
+      // мобилна мрежа това са десетки секунди чакане. Провалът на
+      // смаляването връща оригинала — качването продължава.
+      const small = await compressImage(file);
+
       const form = new FormData();
-      form.append('file', file);
+      form.append('file', small);
       form.append('kind', kind);
       if (setAsDefault) form.append('setAsDefault', 'true');
 

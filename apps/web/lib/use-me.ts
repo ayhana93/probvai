@@ -18,6 +18,7 @@ export type Me = {
   emailVerified: boolean;
   phoneVerified: boolean;
   hasDefaultPhoto: boolean;
+  hasAvatar: boolean;
   memberSince: string;
   profile: {
     firstName: string | null;

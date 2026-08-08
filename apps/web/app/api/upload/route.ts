@@ -11,7 +11,7 @@ import { jsonError, requireUser } from '@/lib/session';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const KINDS = new Set<ImageKind>(['person', 'garment']);
+const KINDS = new Set<ImageKind>(['person', 'garment', 'avatar']);
 
 /**
  * Съобщенията се сглобяват при ЗАЯВКА, не при зареждане на модула.
@@ -92,6 +92,15 @@ export async function POST(request: Request): Promise<Response> {
     await dbSystem().user.update({
       where: { id: session.user.id },
       data: { defaultPhotoKey: result.image.key },
+    });
+  }
+
+  // Профилната снимка се записва ВИНАГИ при качване — тя има само едно
+  // предназначение и няма смисъл да се пита дали да се ползва.
+  if (kind === 'avatar') {
+    await dbSystem().user.update({
+      where: { id: session.user.id },
+      data: { avatarKey: result.image.key },
     });
   }
 

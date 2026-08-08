@@ -33,6 +33,7 @@ import { useRouter } from 'next/navigation';
 import { Patch } from '@/components/ui/patch';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
+import { R } from '@/lib/routes';
 
 type Look = {
   id: string;
@@ -178,9 +179,20 @@ export function Lookbook() {
 
       {looks.length === 0 && !loading ? (
         <Patch material="paper" className="mt-4 px-5 py-7 text-center">
+          {/* ═══ ПРАЗНОТО СЪСТОЯНИЕ КАЗВА ЗАЩО Е ПРАЗНО ═══
+
+              „Още няма визии" оставя човека да мисли, че екранът е счупен —
+              нали има хора с публични гардероби. Истината е друга: публичен
+              гардероб дава само ПРАВОТО. Всяка визия влиза тук поотделно, с
+              изрично натискане, и това е нарочно — публикуването на снимка с
+              лице не бива да се получава по невнимание. */}
           <p className="text-[14px] leading-snug text-ink-45">
-            Тук още няма визии в тази категория. Твоята може да е първата —
-            публикува се от готовата проба.
+            Тук още няма визии в тази категория.
+          </p>
+          <p className="mt-2 text-[13px] leading-snug text-ink-25">
+            Публичният гардероб сам по себе си не показва нищо. Всяка визия се
+            пуска поотделно — отваряш я в гардероба и натискаш „Покажи в
+            Lookbook“.
           </p>
         </Patch>
       ) : (
@@ -232,7 +244,7 @@ export function Lookbook() {
 
                   <button
                     aria-label="Пробвай този аутфит"
-                    onClick={() => router.push(`/proba?vdahnovenie=${look.id}`)}
+                    onClick={() => router.push(`${R.tryOn}?vdahnovenie=${look.id}`)}
                     className="pressable rounded-full bg-lime px-2.5 py-1.5 text-[11.5px] font-semibold text-ink shadow-[0_2px_0_var(--color-lime-deep)]"
                   >
                     ✨ Пробвай

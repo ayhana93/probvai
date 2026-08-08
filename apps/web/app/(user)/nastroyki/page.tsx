@@ -146,9 +146,23 @@ export default function NastroykiPage() {
 
       {/* ── Профилът ─────────────────────────────────────────────────────── */}
       <Patch material="leather" tilt={-1} className="mt-5 flex items-center gap-4 px-5 py-4">
-        <span className="display grid size-12 shrink-0 place-items-center rounded-full bg-lime text-[18px] text-ink">
-          {initial}
-        </span>
+        {/* Има ли профилна снимка — тя стои в кръгчето. Буквата е това,
+            което се показва, ДОКАТО няма снимка, не вместо нея.
+
+            Натиска се и води направо към смяната: кръгчето е мястото, което
+            човек пипа, когато иска да си смени снимката. */}
+        <Link
+          href={R.photo}
+          aria-label={me?.hasAvatar ? 'Смени профилната снимка' : 'Сложи профилна снимка'}
+          className="pressable relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-lime"
+        >
+          {me?.hasAvatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/api/me/avatar" alt="" className="size-full object-cover" />
+          ) : (
+            <span className="display text-[18px] text-ink">{initial}</span>
+          )}
+        </Link>
         <div className="min-w-0">
           <div className="truncate text-[15px] font-semibold text-paper">
             {me?.profile.firstName
@@ -234,8 +248,8 @@ export default function NastroykiPage() {
         title="Профил"
         rows={[
           {
-            label: 'Снимка по подразбиране',
-            value: me?.hasDefaultPhoto ? 'Зададена' : 'Няма',
+            label: 'Профилна снимка',
+            value: me?.hasAvatar ? 'Зададена' : 'Няма',
             href: R.photo,
           },
           // Телефонът се пита при регистрация и не се потвърждава — засега

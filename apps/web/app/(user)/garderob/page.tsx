@@ -8,6 +8,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { Sparks, Zigzag } from '@/components/ui/scribble';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
+import { useMe } from '@/lib/use-me';
 import { R } from '@/lib/routes';
 
 /**
@@ -147,6 +148,7 @@ export default function GarderobPage() {
   const [open, setOpen] = React.useState<Item | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Item | null>(null);
   const [pendingCategory, setPendingCategory] = React.useState<Item | null>(null);
+  const { me } = useMe();
 
   React.useEffect(() => {
     let alive = true;
@@ -197,6 +199,49 @@ export default function GarderobPage() {
     }
   }
 
+  /**
+   * Публикуване от гардероба.
+   *
+   * ═══ ЗАЩО НЕ Е САМО НА ЕКРАНА С РЕЗУЛТАТА ═══
+   *
+   * Досега „Покажи в Lookbook" стоеше единствено под току-що готовата проба.
+   * Излезеш ли от онзи екран, връщане назад няма — визията не може да се
+   * публикува НИКОГА. Оттам и празната галерия: не че нищо не се харесва,
+   * а че прозорецът, в който изобщо може да се публикува, трае една минута.
+   */
+  async function togglePublished(item: Item): Promise<void> {
+    const next = !item.published;
+
+    setItems((current) =>
+      current.map((entry) =>
+        entry.id === item.id ? { ...entry, published: next } : entry,
+      ),
+    );
+    setOpen((current) =>
+      current && current.id === item.id ? { ...current, published: next } : current,
+    );
+
+    try {
+      const response = await fetch(`/api/generate/${item.id}/publish`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ published: next }),
+      });
+      if (!response.ok) throw new Error('отказано');
+    } catch {
+      // Връщаме показаното към истината. Мълчаливо „публикувано", което не е
+      // публикувано, е по-лошо от видима грешка.
+      setItems((current) =>
+        current.map((entry) =>
+          entry.id === item.id ? { ...entry, published: !next } : entry,
+        ),
+      );
+      setOpen((current) =>
+        current && current.id === item.id ? { ...current, published: !next } : current,
+      );
+    }
+  }
+
   async function remove(item: Item): Promise<void> {
     setItems((current) => current.filter((entry) => entry.id !== item.id));
     setPendingDelete(null);
@@ -243,8 +288,8 @@ export default function GarderobPage() {
         <Zigzag className="mb-2 h-4 w-14 text-ink/20" />
       </div>
       <p className="mt-2 text-[14px] text-ink-45">
-        {items.length} {items.length === 1 ? 'проба' : 'проби'} · задръж, за да
-        изтриеш
+        {items.length} {items.length === 1 ? 'проба' : 'проби'} · натисни за цял
+        екран, задръж за изтриване
       </p>
 
       {/* ── Категориите ───────────────────────────────────────────────────
@@ -315,10 +360,31 @@ export default function GarderobPage() {
             alt=""
             className="enter-pop m-auto max-h-[70dvh] max-w-full object-contain"
           />
-          <div className="flex justify-center gap-2 pb-[max(24px,env(safe-area-inset-bottom))]">
+          {/* ═══ ДЕЙСТВИЯТА СА ТУК, А НЕ САМО ЗАД ЗАДЪРЖАНЕ ═══
+
+              Изтриването се вършеше единствено с дълго задържане върху
+              плочката. Жестът е добър — не се случва случайно под палеца
+              при скролване — но е НЕВИДИМ: който не знае за него, няма как
+              да изтрие нищо. Затова остава като бърз път, а тук стои и
+              видимо копче. */}
+          <div
+            className="flex flex-wrap justify-center gap-2 px-4 pb-[max(24px,env(safe-area-inset-bottom))]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {me?.profile.wardrobePublic && (
+              <button
+                onClick={() => void togglePublished(open)}
+                className={cn(
+                  'pressable rounded-full px-5 py-3 text-[14px] font-semibold',
+                  open.published ? 'bg-lime text-ink' : 'bg-paper/15 text-paper',
+                )}
+              >
+                {open.published ? '✨ В Lookbook' : 'Покажи в Lookbook'}
+              </button>
+            )}
+
             <button
-              onClick={(event) => {
-                event.stopPropagation();
+              onClick={() => {
                 setPendingCategory(open);
                 setOpen(null);
               }}
@@ -326,6 +392,17 @@ export default function GarderobPage() {
             >
               Смени категорията
             </button>
+
+            <button
+              onClick={() => {
+                setPendingDelete(open);
+                setOpen(null);
+              }}
+              className="pressable rounded-full bg-danger/85 px-5 py-3 text-[14px] font-semibold text-white"
+            >
+              Изтрий
+            </button>
+
             <button
               onClick={() => setOpen(null)}
               className="pressable rounded-full bg-paper/15 px-6 py-3 text-[14px] font-semibold text-paper"

@@ -21,7 +21,7 @@ import { env, requireEnv } from './env';
 import { prepareUserImage, type PrepareFailure } from './image';
 
 /** Какъв е файлът. Влиза в ключа. */
-export type ImageKind = 'person' | 'garment' | 'result';
+export type ImageKind = 'person' | 'garment' | 'result' | 'avatar';
 
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];

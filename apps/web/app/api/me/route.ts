@@ -27,6 +27,7 @@ export async function GET(): Promise<Response> {
       emailVerified: true,
       phoneVerifiedAt: true,
       defaultPhotoKey: true,
+      avatarKey: true,
       createdAt: true,
       firstName: true,
       lastName: true,
@@ -61,6 +62,7 @@ export async function GET(): Promise<Response> {
       emailVerified: Boolean(me.emailVerified),
       phoneVerified: Boolean(me.phoneVerifiedAt),
       hasDefaultPhoto: Boolean(me.defaultPhotoKey),
+      hasAvatar: Boolean(me.avatarKey),
       memberSince: me.createdAt.toISOString(),
       ledger: recentLedger,
 
