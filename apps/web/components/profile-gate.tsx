@@ -28,7 +28,7 @@ import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useMe } from '@/lib/use-me';
 
-const TARGET = '/registraciya';
+const TARGET = '/dovarshi';
 
 export function ProfileGate() {
   const router = useRouter();

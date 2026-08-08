@@ -82,6 +82,23 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
 
 const CONFIRM_WORD = 'ИЗТРИЙ';
 
+/**
+ * Излизането трие реда в базата и чак после праща човека на стартовия екран.
+ *
+ * Обратният ред би оставил жива сесия при спряла мрежа — тоест бутон
+ * „Излез", който не е излязъл. Затова първо сървърът, после пренасочването.
+ */
+async function signOut(): Promise<void> {
+  try {
+    await fetch('/api/nalog/izhod', { method: 'POST' });
+  } catch {
+    // Дори при паднала мрежа пращаме човека навън. Бисквитката остава,
+    // но следващото зареждане ще я подмине — сесията ще е изтрита при
+    // първия успешен опит.
+  }
+  window.location.href = '/start';
+}
+
 export default function NastroykiPage() {
   const { me, reload } = useMe();
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -246,6 +263,19 @@ export default function NastroykiPage() {
           { label: 'Пиши ни', href: '/podkrepa' },
         ]}
       />
+
+      {/* ── Излизане ─────────────────────────────────────────────────────
+          Отделено от изтриването с разстояние и с друг цвят. Двете копчета
+          едно до друго са класическата грешка: излизането се натиска всеки
+          месец, изтриването — веднъж и завинаги. */}
+      <section className="mt-8">
+        <button
+          onClick={() => void signOut()}
+          className="pressable flex h-14 w-full items-center justify-center rounded-[var(--radius-card)] bg-paper-2 text-[15px] font-semibold"
+        >
+          Излез от профила
+        </button>
+      </section>
 
       {/* ── Необратимото ─────────────────────────────────────────────────── */}
       <section className="mt-10">

@@ -176,6 +176,42 @@ export type { ProfileInput, ProfileResult, ProfileFailure } from './profile';
 
 export { detectGenderByVision, personGenderFor } from './person';
 
+// ── Акаунти с парола ───────────────────────────────────────────────────────
+export {
+  hashPassword,
+  verifyPassword,
+  hashAnswer,
+  verifyAnswer,
+  normalizeAnswer,
+  passwordProblem,
+  MIN_PASSWORD_LENGTH,
+} from './password';
+
+export {
+  SECURITY_QUESTIONS,
+  isSecurityQuestion,
+  questionText,
+  decoyQuestionFor,
+} from './security-questions';
+export type { SecurityQuestion } from './security-questions';
+
+export {
+  registerWithPassword,
+  verifyCredentials,
+  questionForEmail,
+  resetWithAnswer,
+  clearResetAttempts,
+} from './accounts';
+export type {
+  RegisterInput,
+  RegisterResult,
+  RegisterFailure,
+  LoginResult,
+  ResetResult,
+  ResetFailure,
+  QuestionLookup,
+} from './accounts';
+
 export {
   RANKS,
   VIP,
