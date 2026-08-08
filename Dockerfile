@@ -103,6 +103,15 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
+# ⚠ `output: 'standalone'` НЕ включва `public/`. Това не е очевидно и не
+# гърми — просто всеки файл оттам връща 404 в production: логото, демо
+# снимките, иконите. Приложението изглежда работещо и наполовина счупено.
+#
+# Пропуснато беше веднъж точно защото локалното пускане минава през
+# `scripts/start-standalone.mjs`, който копира папката сам. Тоест локално
+# всичко се виждаше, а на хоста логото беше пунктирано каре.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
 # Prisma CLI и миграциите — за да може контейнерът сам да си вдигне схемата
 # при RUN_MIGRATIONS=1. Така пускането на нов хост е една команда.
 COPY --from=prisma-cli --chown=nextjs:nodejs /cli ./cli

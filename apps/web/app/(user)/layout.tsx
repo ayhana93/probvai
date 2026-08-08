@@ -12,7 +12,19 @@ import { ProfileGate } from '@/components/profile-gate';
  */
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-[430px] pb-[124px]">
+    <div
+      className={
+        'mx-auto min-h-dvh w-full max-w-[430px] pb-[124px] ' +
+        // Горният отстъп е за пробива на екрана. В браузър е нула и нищо
+        // не се променя; сложено ли е приложението на началния екран,
+        // `viewportFit: 'cover'` пуска съдържанието под лентата на часа —
+        // и първото нещо на всеки екран влиза под нея.
+        //
+        // Досега това не личеше, защото най-горе стоеше логото и то поемаше
+        // удара. Махнем ли го, там застава черната карта с баланса.
+        'pt-[env(safe-area-inset-top)]'
+      }
+    >
       <ProfileGate />
       {children}
       <BottomNav />
