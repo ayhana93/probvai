@@ -23,19 +23,19 @@ const MODEL_NAME = 'tryon-max';
 /**
  * FASHN Try-On Max configuration.
  *
- * QUALITY + 1K
+ * BALANCED + 2K
  *
  * Do not change these values without also updating COST_USD below.
  */
 const FIXED_SETTINGS = {
-  generation_mode: 'quality',
-  resolution: '1k',
+  generation_mode: 'balanced',
+  resolution: '2k',
 } as const;
 
 /**
  * FASHN cost for one generated image:
  *
- * quality + 1k = 3 FASHN credits
+ * balanced + 2k = 3 FASHN credits
  * 1 FASHN credit = $0.075
  * Total = $0.225 per generation
  */
@@ -95,7 +95,7 @@ export class FashnTryonMax implements TryOnProvider {
       product_image: input.garmentUrl,
 
       // Fixed FASHN configuration:
-      // quality + 1k
+      // balanced + 2k
       ...FIXED_SETTINGS,
 
       // Only send aspect_ratio when valid.
