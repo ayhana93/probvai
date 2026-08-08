@@ -45,6 +45,12 @@ type Props = {
   /** Ако вече има запазена снимка на сървъра, оттук се показва. */
   fallbackSrc?: string;
   material?: Material;
+  /**
+   * `cover` реже до ръба — вярното за снимка на човек, където лицето е в
+   * средата. `contain` показва целия файл — вярното за скрийншот от
+   * магазин, който е висок и от който отрязаното е точно дрехата.
+   */
+  fit?: 'cover' | 'contain';
   className?: string;
 };
 
@@ -56,6 +62,7 @@ export function PhotoSlot({
   hint,
   fallbackSrc,
   material = 'paper',
+  fit = 'cover',
   className,
 }: Props) {
   const input = React.useRef<HTMLInputElement | null>(null);
@@ -134,7 +141,15 @@ export function PhotoSlot({
         type="button"
         onClick={() => input.current?.click()}
         aria-label={image ? 'Смени снимката' : hint}
-        className="pressable block w-full text-left"
+        /**
+         * ⚠ `h-full` е задължително.
+         *
+         * Височината идва отвън, на обвивката. Копчето по средата беше без
+         * височина, значи се разтягаше по съдържанието — а вътре `size-full`
+         * нямаше спрямо какво да се смята. Резултатът: висок скрийншот
+         * заемаше половин екран вместо карето.
+         */
+        className="pressable block size-full text-left"
       >
         <Patch
           material={material}
@@ -158,7 +173,12 @@ export function PhotoSlot({
           >
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={image} alt="" className="size-full object-cover" draggable={false} />
+              <img
+                src={image}
+                alt=""
+                draggable={false}
+                className={cn('size-full', fit === 'cover' ? 'object-cover' : 'object-contain')}
+              />
             ) : (
               <span className="grid place-items-center gap-1 px-2 text-center text-ink-45">
                 <PlusIcon />

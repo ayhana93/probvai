@@ -3,8 +3,8 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMe } from '@/lib/use-me';
+import { Logo } from '@/components/logo';
 import { PhotoSlot } from '@/components/photo-slot';
-import { Button } from '@/components/ui/button';
 import { Sheet } from '@/components/ui/sheet';
 import { Tabs } from '@/components/ui/tabs';
 import { Sparks } from '@/components/ui/scribble';
@@ -140,6 +140,32 @@ function Proba() {
   const hasPhoto = Boolean(personKey) || (me?.hasDefaultPhoto ?? false);
   const hasGarment = tab === 'link' ? link.trim().length > 0 : Boolean(garmentKey);
   const ready = hasPhoto && hasGarment;
+
+  /**
+   * ═══ ТРЕТАТА СТЪПКА СЕ ПОКАЗВА САМА ═══
+   *
+   * Появява се под сгъвката — човек тъкмо е гледал карето на дрехата и
+   * няма причина да скролва надолу, защото не знае, че там вече има нещо.
+   *
+   * Придвижването е `smooth` и до „nearest", не до върха: екранът трябва
+   * само да ДОПУСНЕ новото в полезрението, а не да прескочи. Рязък скок
+   * тук се чете като че ли приложението е сменило страницата.
+   *
+   * Прави се веднъж — при първото ставане на готов. Иначе всяка смяна на
+   * снимката щеше да дърпа екрана пак.
+   */
+  const third = React.useRef<HTMLElement | null>(null);
+  const nudged = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!ready || nudged.current) return;
+    nudged.current = true;
+    // Един кадър изчакване, за да е рисувана вече секцията.
+    const timer = setTimeout(() => {
+      third.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [ready]);
 
   /**
    * Пускането на генерация.
@@ -339,7 +365,10 @@ function Proba() {
             value={garmentKey}
             onChange={setGarmentKey}
             hint="Качи снимка на дрехата"
-            className="enter-pop mt-3 h-40 w-full"
+            // Скрийншотът от магазин е висок. Отрежем ли го до карето,
+            // отрязаното е точно дрехата — затова тук се вижда целият файл.
+            fit="contain"
+            className="enter-pop mt-3 h-56 w-full"
           />
         )}
 
@@ -348,35 +377,83 @@ function Proba() {
         </p>
       </section>
 
-      {/* ── Действието ──────────────────────────────────────────────────────
-          Копчето за генериране е широко и лаймово; зъбното колело е малко
-          и тихо до него. Едното е действие, другото е настройка — и това
-          трябва да си личи от разстояние, без да се чете. */}
-      <div className="mt-8 flex items-center gap-2.5">
-        <Button
-          variant="action"
-          size="lg"
-          block
-          disabled={!ready}
-          busy={starting}
-          onClick={() => void start()}
-        >
-          {starting
-            ? (stage ?? 'Пускаме я...')
-            : ready
-              ? 'Генерирай · 1 кредит'
-              : !hasPhoto
-                ? 'Първо качи своя снимка'
-                : 'Сега избери дреха'}
-        </Button>
+      {/* ── Стъпка 3 ────────────────────────────────────────────────────────
+          ═══ ЗАЩО Я ЯМА, ДОКАТО ДВЕТЕ ГОРЕ НЕ СА ГОТОВИ ═══
 
+          Сиво копче, което стои от самото начало, е обещание, което екранът
+          не спазва — човек го натиска, нищо не става и остава да гадае коя
+          стъпка е пропуснал. Тук третата стъпка ПРИСТИГА, щом двете отгоре
+          са налице. Появата ѝ сама казва „готово, това е следващото".
+
+          ═══ ЗАЩО ЛОГОТО Е КОПЧЕТО ═══
+
+          Това е единственото действие на екрана, което харчи кредит. Дадем
+          ли му формата на обикновено копче, то е поредното копче. Логото
+          не прилича на нищо друго в приложението — не може да се сбърка,
+          не може да се пропусне и превръща натискането в момент.
+
+          Цената пише ПОД него. Копче, което взима пари, без да казва колко,
+          се натиска веднъж и после не се вярва на нито едно. */}
+      {ready && (
+        <section ref={third} className="enter-rise mt-9">
+          <div className="flex items-center gap-3">
+            <StepBadge n={3} />
+            <h2 className="text-[17px] font-semibold">Готово — пробвай</h2>
+          </div>
+
+          <div className="mt-4 flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => void start()}
+              disabled={starting}
+              aria-label="Генерирай пробата"
+              className={cn(
+                'group grid place-items-center rounded-[28px] px-6 py-5',
+                'transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)]',
+                starting ? 'opacity-60' : 'active:scale-[0.97]',
+              )}
+            >
+              {/* Подложката е плетка с тъмен пръстен — същото парче, което
+                  е и централното копче в менюто. Едно действие, един език. */}
+              <span className="relative grid place-items-center">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'tx-knit absolute -inset-x-5 -inset-y-4 -rotate-2',
+                    'rounded-[30px_22px_32px_20px] ring-[5px] ring-ink',
+                    'shadow-[0_6px_0_var(--color-lime-deep),0_14px_26px_-10px_rgba(0,0,0,.45)]',
+                    'transition-shadow duration-[var(--dur-press)] ease-[var(--ease-out)]',
+                    'group-active:shadow-[0_2px_0_var(--color-lime-deep),0_6px_14px_-10px_rgba(0,0,0,.45)]',
+                  )}
+                />
+                <Logo width={168} className="relative" />
+              </span>
+            </button>
+
+            <p className="mt-6 text-[13.5px] font-semibold">
+              {starting ? (stage ?? 'Пускаме я...') : 'Натисни логото · 1 кредит'}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* ── Настройките и състоянието ─────────────────────────────────────
+          Зъбното колело е малко и тихо. То е настройка, не действие — и
+          това трябва да си личи от разстояние, без да се чете. */}
+      <div className="mt-8 flex items-center justify-center gap-3">
         <button
           aria-label="Настройки на генерирането"
           onClick={() => setSettingsOpen(true)}
-          className="pressable grid size-14 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-70"
+          className="pressable grid size-12 shrink-0 place-items-center rounded-full bg-paper-2 text-ink-70"
         >
           <GearIcon />
         </button>
+
+        {!ready && (
+          <span className="text-[13.5px] text-ink-45">
+            {!hasPhoto ? 'Първо качи своя снимка' : 'Сега избери дреха'}
+          </span>
+        )}
       </div>
 
       {error ? (

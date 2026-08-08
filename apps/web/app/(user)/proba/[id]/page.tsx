@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { LiquidFill } from '@/components/liquid-fill';
 import { ResultView } from '@/components/result-view';
 import { WaitCards } from '@/components/wait-cards';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,21 @@ export default function ProbaResultPage() {
 
   const { view, elapsed, timedOut, done } = useGeneration(id);
   const { me } = useMe();
+
+  /**
+   * ═══ ЕКРАНЪТ ОТИВА ПРИ РЕЗУЛТАТА САМ ═══
+   *
+   * Докато се чака, човек скролва — картите с четиво отдолу са точно за
+   * това. Стане ли готово, съдържанието се сменя ПОД него и наградата
+   * остава някъде нагоре, извън екрана.
+   *
+   * Затова при преминаване към готово екранът се връща горе. Плавно, не
+   * със скок: скокът се чете като презареждане.
+   */
+  React.useEffect(() => {
+    if (view?.status !== 'DONE') return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [view?.status]);
 
   // ── Готово ──────────────────────────────────────────────────────────────
   if (view?.status === 'DONE' && view.resultUrl) {
@@ -110,9 +126,14 @@ export default function ProbaResultPage() {
         <Sparks className="mb-1.5 h-3.5 w-6 text-violet" />
       </div>
 
-      {/* Скелетът показва КАКВО идва — правоъгълникът е точно с формата на
-          бъдещия резултат. Въртящо кръгче не казва нищо. */}
-      <div className="skeleton mt-5 aspect-[3/4] w-full rounded-[var(--radius-card)]" />
+      {/* Твоята снимка се пълни с неоново зелено. Пълненето Е лентата —
+          виж `components/liquid-fill.tsx` защо нивото не стига до върха,
+          преди резултатът наистина да е готов. */}
+      <LiquidFill
+        src={view?.personUrl ?? null}
+        elapsed={elapsed}
+        className="mt-5 aspect-[3/4] w-full"
+      />
 
       <div className="mt-6 flex items-baseline justify-between">
         <span className="text-[14px] text-ink-45">{waitingText(elapsed)}</span>
