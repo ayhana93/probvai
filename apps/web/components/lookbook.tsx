@@ -153,9 +153,20 @@ export function Lookbook() {
 
   return (
     <section className="mt-9">
-      <div className="flex items-end justify-between">
-        <h2 className="display text-[22px]">Lookbook</h2>
-        <span className="mb-1 text-[12.5px] text-ink-45">визии от хората тук</span>
+      {/* ═══ ЗАЩО ПОДЗАГЛАВИЕТО МОЖЕ ДА ИЗЧЕЗНЕ ═══
+
+          При включено увеличение в Safari екранът е широк 314 пиксела вместо
+          393. Тогава двете надписа се събираха едно върху друго — заглавието
+          е с тежък шрифт и не се свива, а подзаглавието се пренасяше нагоре.
+
+          Тук подзаглавието е второстепенно: то обяснява нещо, което снимките
+          отдолу и без това показват. По-добре да го няма, отколкото да лежи
+          върху заглавието. */}
+      <div className="flex items-end justify-between gap-3">
+        <h2 className="display shrink-0 text-[22px]">Lookbook</h2>
+        <span className="mb-1 hidden truncate text-[12.5px] text-ink-45 min-[340px]:inline">
+          визии от хората тук
+        </span>
       </div>
 
       {/* ── Категориите ─────────────────────────────────────────────────────

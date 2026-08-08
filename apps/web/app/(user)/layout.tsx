@@ -55,12 +55,9 @@ export default async function UserLayout({ children }: { children: React.ReactNo
          * + 34px  въздух, за да не залепва последният ред за менюто
          * + safe-area-inset-bottom
          */
-        'pb-[calc(120px+env(safe-area-inset-bottom))] ' +
-        // Горният отстъп е за пробива на екрана. В браузър е нула и нищо
-        // не се променя; сложено ли е приложението на началния екран,
-        // `viewportFit: cover` пуска съдържанието под лентата на часа —
-        // и първото нещо на всеки екран влиза под нея.
-        'pt-[env(safe-area-inset-top)]'
+        // Горният отстъп за пробива на екрана е на `body`, в globals.css:
+        // там важи и за екраните извън приложението.
+        'pb-[calc(120px+env(safe-area-inset-bottom))]'
       }
     >
       <ProfileGate />
