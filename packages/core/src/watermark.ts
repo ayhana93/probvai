@@ -45,6 +45,21 @@ export async function shouldWatermark(userId: string): Promise<boolean> {
   return !(await hasEverPurchased(userId));
 }
 
+/**
+ * ═══ ШРИФТЪТ СЕ ИЗБИРА ИЗРИЧНО ═══
+ *
+ * Надписът се рисува от librsvg, не от браузър. Тя няма представа какво е
+ * `-apple-system` и разчита изцяло на fontconfig в самия контейнер.
+ *
+ * Затова „DejaVu Sans" стои ПРЪВ: той се слага нарочно в `Dockerfile.worker`
+ * и има кирилица. Останалите са за работа на машина за разработка, където
+ * DejaVu може да го няма.
+ *
+ * ⚠ Липсва ли изобщо шрифт, това НЕ гърми — снимката излиза с празни
+ * квадратчета вместо букви. Затова шрифтът е част от образа, не пожелание.
+ */
+const FONT_STACK = 'DejaVu Sans, -apple-system, Segoe UI, Roboto, sans-serif';
+
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -79,7 +94,7 @@ function overlaySvg(width: number, height: number, text: string): Buffer {
     <pattern id="tile" width="${tileFont * 20}" height="${tileFont * 13}"
              patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
       <text x="0" y="${tileFont * 6}"
-            font-family="-apple-system, Segoe UI, Roboto, sans-serif"
+            font-family="${FONT_STACK}"
             font-size="${tileFont}" font-weight="600"
             letter-spacing="${(tileFont * 0.08).toFixed(2)}"
             fill="#ffffff" fill-opacity="0.075">${label}</text>
@@ -97,7 +112,7 @@ function overlaySvg(width: number, height: number, text: string): Buffer {
           fill="#000000" fill-opacity="0.42"/>
     <text x="${width / 2}" y="${badgeY + badgeHeight / 2}"
           text-anchor="middle" dominant-baseline="central"
-          font-family="-apple-system, Segoe UI, Roboto, sans-serif"
+          font-family="${FONT_STACK}"
           font-size="${badgeFont}" font-weight="700"
           letter-spacing="${(badgeFont * 0.02).toFixed(2)}"
           fill="#ffffff" fill-opacity="0.92">${label}</text>
