@@ -80,7 +80,33 @@ async function main() {
 
   console.log(
     `\n  Съотношение за logo.tsx: ${meta.width} / ${meta.height}` +
-      ` = ${(meta.width / meta.height).toFixed(4)}\n`,
+      ` = ${(meta.width / meta.height).toFixed(4)}`,
+  );
+
+  /**
+   * ═══ ВТОРИ ФАЙЛ: ЛОГОТО БЕЗ ПОЛЕТАТА ═══
+   *
+   * Оригиналът е 3:2 и около самия надпис има широка прозрачна ивица.
+   * За начален екран това е добре — логото диша.
+   *
+   * Върху КОПЧЕ обаче полетата стават празнина вътре в копчето: подложката
+   * пораства с тях и се получава голям лаймов правоъгълник с малък надпис в
+   * средата. Точно това изглеждаше зле.
+   *
+   * `trim` реже прозрачното до самия надпис. Отстоянието после се дава от
+   * `padding`-а на копчето — тоест го решава дизайнът, а не файлът.
+   */
+  const tight = resolve(brand, 'logo-tight.png');
+  const trimmed = sharp(SOURCE).trim({ threshold: 1 });
+  const tightMeta = await trimmed
+    .resize({ width: WIDTH, withoutEnlargement: true })
+    .png({ compressionLevel: 9, palette: true })
+    .toFile(tight);
+
+  console.log(`  ✓ logo-tight.png  ${await sizeOf(tight)} KB`);
+  console.log(
+    `  Съотношение за logo.tsx (tight): ${tightMeta.width} / ${tightMeta.height}` +
+      ` = ${(tightMeta.width / tightMeta.height).toFixed(4)}\n`,
   );
 
   await flow();

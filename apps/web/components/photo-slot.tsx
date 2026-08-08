@@ -51,6 +51,19 @@ type Props = {
    * магазин, който е висок и от който отрязаното е точно дрехата.
    */
   fit?: 'cover' | 'contain';
+  /**
+   * Височината да следва снимката, вместо да е закована отвън.
+   *
+   * За дрехата е задължително: снимките са от съвсем различни форми — тясна
+   * дреха на бял фон, широк аутфит, много висок скрийншот от Instagram. При
+   * закована височина или се реже (и отрязаното е точно дрехата), или остават
+   * широки бели полета от двете страни.
+   *
+   * Празното каре пази `minHeight`, за да има какво да се натисне.
+   */
+  grow?: boolean;
+  /** Докъде расте карето при `grow`. Без таван висок скрийншот заема екрана. */
+  maxHeight?: number;
   className?: string;
 };
 
@@ -63,6 +76,8 @@ export function PhotoSlot({
   fallbackSrc,
   material = 'paper',
   fit = 'cover',
+  grow = false,
+  maxHeight = 420,
   className,
 }: Props) {
   const input = React.useRef<HTMLInputElement | null>(null);
@@ -124,7 +139,7 @@ export function PhotoSlot({
   const confirmed = !busy && (Boolean(value) || (preview === null && Boolean(fallbackSrc)));
 
   return (
-    <div className={className}>
+    <div className={className} style={grow && image ? { height: 'auto' } : undefined}>
       <input
         ref={input}
         type="file"
@@ -155,7 +170,8 @@ export function PhotoSlot({
           material={material}
           tilt={-1.5}
           className={cn(
-            'grid size-full place-items-center overflow-hidden p-2',
+            'grid place-items-center overflow-hidden p-2',
+            grow && image ? 'h-auto w-full' : 'size-full',
             // Пунктирът е покана да се натисне. Щом има снимка, вече не е
             // покана — става плътен кант и престава да мига пред очите.
             'transition-[opacity] duration-[var(--dur-menu)] ease-[var(--ease-out)]',
@@ -163,7 +179,8 @@ export function PhotoSlot({
         >
           <div
             className={cn(
-              'relative grid size-full place-items-center overflow-hidden rounded-[12px_9px_14px_8px]',
+              'relative grid place-items-center overflow-hidden rounded-[12px_9px_14px_8px]',
+              grow && image ? 'h-auto w-full' : 'size-full',
               image
                 ? confirmed
                   ? 'ring-[3px] ring-lime-deep'
@@ -177,7 +194,11 @@ export function PhotoSlot({
                 src={image}
                 alt=""
                 draggable={false}
-                className={cn('size-full', fit === 'cover' ? 'object-cover' : 'object-contain')}
+                className={cn(
+                  grow ? 'block w-full' : 'size-full',
+                  fit === 'cover' ? 'object-cover' : 'object-contain',
+                )}
+                style={grow ? { maxHeight, width: '100%', objectFit: 'contain' } : undefined}
               />
             ) : (
               <span className="grid place-items-center gap-1 px-2 text-center text-ink-45">

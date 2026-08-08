@@ -365,10 +365,11 @@ function Proba() {
             value={garmentKey}
             onChange={setGarmentKey}
             hint="Качи снимка на дрехата"
-            // Скрийншотът от магазин е висок. Отрежем ли го до карето,
-            // отрязаното е точно дрехата — затова тук се вижда целият файл.
-            fit="contain"
-            className="enter-pop mt-3 h-56 w-full"
+            // Карето следва снимката, вместо тя да следва карето. Дрехата се
+            // вижда ЦЯЛА — нито отрязана, нито удавена в бели полета.
+            grow
+            maxHeight={430}
+            className="enter-pop mt-3 h-40 w-full"
           />
         )}
 
@@ -401,6 +402,24 @@ function Proba() {
             <h2 className="text-[17px] font-semibold">Готово — пробвай</h2>
           </div>
 
+          {/* ═══ ЗАЩО КОПЧЕТО Е НИСКО И ШИРОКО ═══
+
+              Първата версия беше висок лаймов правоъгълник с логото малко в
+              средата. Изглеждаше зле по две причини, и двете за пропорция:
+
+              1. Логото е ШИРОКО (3:2). Сложено в почти квадратна подложка,
+                 около него остава повече празно, отколкото самото лого — а
+                 големите празни полета четат като недовършен макет.
+              2. Подложката беше по-голяма от нужното и стана най-тежкото
+                 нещо на екрана. Тя обаче е рамка на логото, не самостоятелна
+                 форма.
+
+              Сега подложката приляга на логото — тънък кант около него, а не
+              поле. Ъглите са различни четири и е леко наклонено: същото
+              изрязано парче, от което е сглобено самото лого. Отдолу има
+              плътна лаймово-тъмна „дебелина", която при натискане се свива.
+              Това е ФИЗИКА, не украса: копче, което потъва, се усеща като
+              натиснато. */}
           <div className="mt-4 flex flex-col items-center">
             <button
               type="button"
@@ -408,29 +427,26 @@ function Proba() {
               disabled={starting}
               aria-label="Генерирай пробата"
               className={cn(
-                'group grid place-items-center rounded-[28px] px-6 py-5',
+                'group relative block w-[262px] max-w-full',
                 'transition-transform duration-[var(--dur-press)] ease-[var(--ease-out)]',
-                starting ? 'opacity-60' : 'active:scale-[0.97]',
+                starting ? 'opacity-60' : 'active:translate-y-[3px]',
               )}
             >
-              {/* Подложката е плетка с тъмен пръстен — същото парче, което
-                  е и централното копче в менюто. Едно действие, един език. */}
-              <span className="relative grid place-items-center">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'tx-knit absolute -inset-x-5 -inset-y-4 -rotate-2',
-                    'rounded-[30px_22px_32px_20px] ring-[5px] ring-ink',
-                    'shadow-[0_6px_0_var(--color-lime-deep),0_14px_26px_-10px_rgba(0,0,0,.45)]',
-                    'transition-shadow duration-[var(--dur-press)] ease-[var(--ease-out)]',
-                    'group-active:shadow-[0_2px_0_var(--color-lime-deep),0_6px_14px_-10px_rgba(0,0,0,.45)]',
-                  )}
-                />
-                <Logo width={168} className="relative" />
+              <span
+                className={cn(
+                  'tx-knit relative block -rotate-[1.5deg] px-[18px] py-3.5',
+                  'rounded-[26px_16px_28px_14px] ring-[5px] ring-ink',
+                  'shadow-[0_7px_0_var(--color-lime-deep),0_16px_26px_-14px_rgba(0,0,0,.5)]',
+                  'transition-shadow duration-[var(--dur-press)] ease-[var(--ease-out)]',
+                  'group-active:shadow-[0_4px_0_var(--color-lime-deep),0_8px_16px_-14px_rgba(0,0,0,.5)]',
+                )}
+              >
+                <Logo tight width={222} className="mx-auto block" />
+
               </span>
             </button>
 
-            <p className="mt-6 text-[13.5px] font-semibold">
+            <p className="mt-5 text-[13.5px] font-semibold">
               {starting ? (stage ?? 'Пускаме я...') : 'Натисни логото · 1 кредит'}
             </p>
           </div>

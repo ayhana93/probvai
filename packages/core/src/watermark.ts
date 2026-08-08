@@ -17,6 +17,9 @@
  * плюс повторен диагонален надпис през средата с ниска непрозрачност.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { dbSystem } from '@probvai/db';
 import { env } from './env';
@@ -70,57 +73,100 @@ function escapeXml(value: string): string {
 }
 
 /**
- * Строи SVG слоя с надписа.
- * Размерите се смятат спрямо снимката, за да изглежда еднакво на всяка.
+ * ═══ ЗНАКЪТ Е КАРТИНКА, А НЕ НАДПИС ═══
+ *
+ * Дотук се рисуваше текст в SVG. Това значеше, че готовата снимка зависи от
+ * това дали в контейнера има шрифт — а в първия истински образ нямаше, и
+ * знакът излизаше като редица празни квадратчета, без нищо да се оплаче.
+ *
+ * Логото е картинка. Слагането на картинка върху картинка не иска шрифтове,
+ * не иска fontconfig и изглежда еднакво навсякъде.
+ *
+ * ⚠ Файлът е в `packages`, не в `apps/web/public`. Знакът се налага от
+ * РАБОТНИКА, а неговият образ носи само `packages`, `scripts` и
+ * `package.json` — от `public` там няма нищо.
  */
-function overlaySvg(width: number, height: number, text: string): Buffer {
+function markPath(): string {
+  /**
+   * ⚠ Пътят се СГЛОБЯВА, не се пише като литерал в `new URL(...)`.
+   *
+   * Написан така, webpack го вижда като внасяне на модул и `next build`
+   * пада с „Can't resolve '../assets/watermark.png'". Файлът обаче не е
+   * модул — той е ресурс, който се чете при работа, и то само от работника.
+   *
+   * Пътят се смята и ВЪТРЕ във функция, не на ниво модул: така нищо не се
+   * изпълнява само защото файлът е внесен от билда.
+   */
+  const here = dirname(fileURLToPath(import.meta.url));
+  return join(here, '..', 'assets', 'watermark.png');
+}
+
+/** Каква част от широчината заема знакът. */
+const MARK_WIDTH_RATIO = 0.22;
+
+/** Разстояние от ъгъла, също спрямо широчината — на всяка снимка еднакво. */
+const MARK_MARGIN_RATIO = 0.035;
+
+/**
+ * Прочитаният файл се пази. Работникът прави хиляди снимки и няма причина
+ * да чете един и същ файл от диска за всяка.
+ *
+ * `null` значи „проверено е и го няма" — тогава се пада на надписа отдолу,
+ * вместо снимката да излезе без никакъв знак.
+ */
+let markCache: Buffer | null | undefined;
+
+function loadMark(): Buffer | null {
+  if (markCache !== undefined) return markCache;
+  try {
+    markCache = readFileSync(markPath());
+  } catch {
+    console.warn(`[воден знак] липсва ${markPath()} — падам на надпис.`);
+    markCache = null;
+  }
+  return markCache;
+}
+
+/** Само за тестове — кара следващото налагане да прочете файла наново. */
+export function resetWatermarkCache(): void {
+  markCache = undefined;
+}
+
+/**
+ * Резервният надпис.
+ *
+ * Ползва се САМО когато картинката липсва. Нарочно е същият размер и на
+ * същото място, за да не се получи снимка, която изглежда като от друго
+ * приложение, ако някой ден файлът изпадне от образа.
+ */
+function fallbackSvg(width: number, markWidth: number, markHeight: number, text: string): Buffer {
   const label = escapeXml(text);
+  const font = Math.max(11, Math.round(markWidth * 0.2));
 
-  const badgeFont = Math.max(14, Math.round(width * 0.038));
-  const badgePadX = Math.round(badgeFont * 0.7);
-  const badgeHeight = Math.round(badgeFont * 1.9);
-  const badgeWidth = Math.round(label.length * badgeFont * 0.56 + badgePadX * 2);
-  const badgeX = Math.round((width - badgeWidth) / 2);
-  const badgeY = height - badgeHeight - Math.round(height * 0.028);
-
-  const tileFont = Math.max(14, Math.round(width * 0.032));
-
-  return Buffer.from(`<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <!-- Рядък диагонален надпис. Целта не е да развали снимката, а да остане
-         на нея, ако някой изреже лентата долу.
-         Безплатните резултати се споделят — това е основният ни канал за
-         растеж. Знак, който прави снимката грозна, убива точно този канал. -->
-    <pattern id="tile" width="${tileFont * 20}" height="${tileFont * 13}"
-             patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
-      <text x="0" y="${tileFont * 6}"
-            font-family="${FONT_STACK}"
-            font-size="${tileFont}" font-weight="600"
-            letter-spacing="${(tileFont * 0.08).toFixed(2)}"
-            fill="#ffffff" fill-opacity="0.075">${label}</text>
-    </pattern>
-    <filter id="soften" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000" flood-opacity="0.28"/>
-    </filter>
-  </defs>
-
-  <rect width="${width}" height="${height}" fill="url(#tile)"/>
-
-  <g filter="url(#soften)">
-    <rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}"
-          rx="${Math.round(badgeHeight / 2)}"
-          fill="#000000" fill-opacity="0.42"/>
-    <text x="${width / 2}" y="${badgeY + badgeHeight / 2}"
-          text-anchor="middle" dominant-baseline="central"
-          font-family="${FONT_STACK}"
-          font-size="${badgeFont}" font-weight="700"
-          letter-spacing="${(badgeFont * 0.02).toFixed(2)}"
-          fill="#ffffff" fill-opacity="0.92">${label}</text>
-  </g>
+  return Buffer.from(`<svg width="${markWidth}" height="${markHeight}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${markWidth}" height="${markHeight}" rx="${Math.round(markHeight / 2)}"
+        fill="#000000" fill-opacity="0.38"/>
+  <text x="${markWidth / 2}" y="${markHeight / 2}"
+        text-anchor="middle" dominant-baseline="central"
+        font-family="${FONT_STACK}" font-size="${font}" font-weight="700"
+        fill="#ffffff" fill-opacity="0.9">${label}</text>
 </svg>`);
 }
 
-/** Налага водния знак и връща новото изображение. */
+/**
+ * Налага водния знак и връща новото изображение.
+ *
+ * ═══ ЕДИН ЗНАК, ДОЛУ ВДЯСНО, МАЛЪК ═══
+ *
+ * Преди знакът беше и лента през целия долен край, и повтарящ се диагонален
+ * надпис през цялата снимка. Това пазеше повече, но разваляше снимката — а
+ * безплатните проби се СПОДЕЛЯТ и точно това е основният ни канал за
+ * растеж. Знак, който прави снимката грозна, убива канала, който трябва да
+ * храни.
+ *
+ * Затова: един малък знак в долния десен ъгъл. Може да се изреже — и това
+ * е приемливо. Целта му е да казва откъде идва снимката, не да я заключва.
+ */
 export async function applyWatermark(
   image: Uint8Array,
   text: string = env.WATERMARK_TEXT,
@@ -134,8 +180,60 @@ export async function applyWatermark(
     throw new Error('Не мога да разчета размерите на изображението за водния знак.');
   }
 
+  const markWidth = Math.max(80, Math.round(width * MARK_WIDTH_RATIO));
+  const margin = Math.round(width * MARK_MARGIN_RATIO);
+
+  const file = loadMark();
+
+  let overlay: Buffer;
+  let markHeight: number;
+
+  if (file) {
+    // Смалява се веднъж, до истинската широчина. Подаден в пълен размер,
+    // sharp щеше да откаже да го наложи върху по-малка снимка.
+    const resized = await sharp(file)
+      .resize({ width: markWidth, withoutEnlargement: false })
+      .png()
+      .toBuffer();
+
+    markHeight = (await sharp(resized).metadata()).height ?? 0;
+
+    /**
+     * ═══ ПРОЗРАЧНОСТТА СЕ ВПИСВА В САМИЯ ЗНАК ═══
+     *
+     * `composite` няма `opacity` — има само `blend`. Затова алфата на знака
+     * се умножава предварително: бяло правоъгълниче с 82% през `dest-in`
+     * изрязва точно толкова от плътността му.
+     *
+     * Другата възможност беше `ensureAlpha`, но той пипа само файлове БЕЗ
+     * алфа — а нашият знак е PNG с прозрачност и там не прави нищо.
+     */
+    overlay = await sharp(resized)
+      .composite([
+        {
+          input: Buffer.from(
+            `<svg width="${markWidth}" height="${markHeight}" xmlns="http://www.w3.org/2000/svg">` +
+              `<rect width="${markWidth}" height="${markHeight}" fill="#ffffff" fill-opacity="0.82"/></svg>`,
+          ),
+          blend: 'dest-in',
+        },
+      ])
+      .png()
+      .toBuffer();
+  } else {
+    markHeight = Math.round(markWidth * 0.34);
+    overlay = fallbackSvg(width, markWidth, markHeight, text);
+  }
+
   return source
-    .composite([{ input: overlaySvg(width, height, text), top: 0, left: 0 }])
+    .composite([
+      {
+        input: overlay,
+        top: Math.max(0, height - markHeight - margin),
+        left: Math.max(0, width - markWidth - margin),
+        blend: 'over',
+      },
+    ])
     .jpeg({ quality: 90, mozjpeg: true })
     .toBuffer();
 }

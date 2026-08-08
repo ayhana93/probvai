@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { LiquidFill } from '@/components/liquid-fill';
+import { RecoBlocks } from '@/components/reco-blocks';
 import { ResultView } from '@/components/result-view';
 import { WaitCards } from '@/components/wait-cards';
 import { Button } from '@/components/ui/button';
@@ -118,36 +118,50 @@ export default function ProbaResultPage() {
     );
   }
 
-  // ── Чакане ──────────────────────────────────────────────────────────────
+  /**
+   * ── Чакане ────────────────────────────────────────────────────────────
+   *
+   * ═══ ЕКРАНЪТ Е ПРАЗЕН НАРОЧНО ═══
+   *
+   * Тук стоеше снимката, която се пълнеше с неоново зелено. Свалена е:
+   * докато чака, човек гледа СВОЯ снимка, преправена така, че да изглежда
+   * зле — и това е последното, което трябва да вижда точно преди наградата.
+   *
+   * Остава броячът и едно изречение какво става. Отдолу — предложенията,
+   * защото това е половин минута, в която човекът мисли точно за дрехата,
+   * която е избрал.
+   *
+   * Броячът е ГОЛЯМ и е единственото движещо се нещо. Той е и обещанието:
+   * числото, което расте, казва „работи се" по-убедително от всяка лента.
+   */
   return (
     <main className="px-5 pt-8">
       <div className="flex items-center gap-2">
-        <h1 className="display text-[26px]">Правим я</h1>
+        <h1 className="display text-[26px]">Създава се</h1>
         <Sparks className="mb-1.5 h-3.5 w-6 text-violet" />
       </div>
 
-      {/* Твоята снимка се пълни с неоново зелено. Пълненето Е лентата —
-          виж `components/liquid-fill.tsx` защо нивото не стига до върха,
-          преди резултатът наистина да е готов. */}
-      <LiquidFill
-        src={view?.personUrl ?? null}
-        elapsed={elapsed}
-        className="mt-5 aspect-[3/4] w-full"
-      />
-
-      <div className="mt-6 flex items-baseline justify-between">
-        <span className="text-[14px] text-ink-45">{waitingText(elapsed)}</span>
+      <div className="mt-10 flex flex-col items-center">
         <span
-          className="display text-[22px] tabular-nums text-ink"
+          className="display text-[68px] leading-none tabular-nums"
           aria-label={`Изминали ${elapsed} секунди`}
         >
-          {elapsed}s
+          {elapsed}
+          <span className="text-[30px] text-ink-45">s</span>
         </span>
+
+        <p className="mt-4 max-w-[280px] text-center text-[14px] leading-snug text-ink-70">
+          {waitingText(elapsed)}
+        </p>
+
+        <p className="mt-3 max-w-[280px] text-center text-[12.5px] leading-snug text-ink-25">
+          Може да излезеш от този екран. Пробата ще те чака в гардероба.
+        </p>
       </div>
 
-      <p className="mt-4 text-[13px] leading-snug text-ink-25">
-        Може да излезеш от този екран. Пробата ще те чака в гардероба.
-      </p>
+      {/* Партньорските блокове. Същите, които стоят и под готовата визия —
+          един източник, за да не се разминат двата екрана. */}
+      <RecoBlocks blocks={view?.recommendations ?? []} />
 
       <WaitCards cards={view?.waiting ?? []} />
     </main>

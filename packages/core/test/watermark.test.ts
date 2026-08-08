@@ -42,6 +42,28 @@ async function sample(width = 800, height = 1000): Promise<Buffer> {
     .toBuffer();
 }
 
+/**
+ * Колко байта се различават в дадено парче от двете снимки.
+ *
+ * Прагът 8 е заради JPEG: същият пиксел, минал през компресия още веднъж,
+ * се мени с една-две единици. Без него „непроменена" област никога не
+ * излиза непроменена.
+ */
+async function differingBytes(
+  before: Buffer,
+  after: Buffer,
+  crop: { left: number; top: number; width: number; height: number },
+): Promise<number> {
+  const a = await sharp(before).extract(crop).raw().toBuffer();
+  const b = await sharp(after).extract(crop).raw().toBuffer();
+
+  let different = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    if (Math.abs((a[i] ?? 0) - (b[i] ?? 0)) > 8) different += 1;
+  }
+  return different;
+}
+
 describe('Налагане на знака', () => {
   it('запазва размерите на снимката', async () => {
     const original = await sample(768, 1024);
@@ -58,17 +80,26 @@ describe('Налагане на знака', () => {
 
     expect(Buffer.compare(original, marked)).not.toBe(0);
 
-    // Долната лента трябва да е забележимо различна от оригинала —
-    // там седи надписът.
-    const crop = { left: 200, top: 900, width: 400, height: 80 };
-    const beforeStrip = await sharp(original).extract(crop).raw().toBuffer();
-    const afterStrip = await sharp(marked).extract(crop).raw().toBuffer();
+    // Знакът е в ДОЛНИЯ ДЕСЕН ъгъл. На 800×1000 това значи широчина 176 и
+    // отстъп 28, тоест някъде между 596 и 772 по хоризонтала.
+    const corner = { left: 560, top: 880, width: 240, height: 120 };
+    expect(await differingBytes(original, marked, corner)).toBeGreaterThan(500);
+  });
 
-    let different = 0;
-    for (let i = 0; i < beforeStrip.length; i += 1) {
-      if (Math.abs((beforeStrip[i] ?? 0) - (afterStrip[i] ?? 0)) > 8) different += 1;
+  it('НЕ пипа останалата част от снимката', async () => {
+    // Знакът беше и повтарящ се диагонален надпис през цялата снимка. Това
+    // пазеше повече и разваляше снимката — а безплатните проби се споделят
+    // и точно това е каналът, който трябва да ни храни.
+    const original = await sample();
+    const marked = await applyWatermark(original);
+
+    for (const patch of [
+      { left: 0, top: 0, width: 300, height: 300 },
+      { left: 400, top: 300, width: 300, height: 300 },
+      { left: 0, top: 850, width: 300, height: 150 },
+    ]) {
+      expect(await differingBytes(original, marked, patch)).toBe(0);
     }
-    expect(different).toBeGreaterThan(500);
   });
 
   it('работи и на малки, и на големи снимки', async () => {

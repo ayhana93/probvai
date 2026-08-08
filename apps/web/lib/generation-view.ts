@@ -104,9 +104,18 @@ export async function loadGenerationView(
     personUrl,
     saved: generation.savedAt !== null,
     published: generation.publishedAt !== null,
-    // Предложенията се смятат само за готова визия — под чакащ екран няма
-    // какво да се купува към нея.
-    recommendations: generation.status === 'DONE' ? blocksFor(reco) : [],
+    /**
+     * ═══ ПРЕДЛОЖЕНИЯТА СЕ СМЯТАТ И ДОКАТО СЕ ЧАКА ═══
+     *
+     * Преди бяха само за готова визия — „под чакащ екран няма какво да се
+     * купува". Това беше грешна сметка: половин минута с празен екран е
+     * най-мъртвото място в целия поток, а човекът точно тогава мисли за
+     * дрехата, която е избрал.
+     *
+     * Не зависят от резултата — идват от категорията, пола и линка, а те
+     * се знаят още при пускането.
+     */
+    recommendations: blocksFor(reco),
     waiting: generation.status === 'DONE' ? [] : waitCards(reco),
   };
 }

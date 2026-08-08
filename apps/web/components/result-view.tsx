@@ -26,6 +26,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { RecoBlocks, type RecoBlockView } from '@/components/reco-blocks';
 import { Button } from '@/components/ui/button';
 import { LookFrame } from '@/components/ui/look-frame';
@@ -68,6 +69,7 @@ export function ResultView({
   const [save, setSave] = React.useState<SaveState>(saved ? 'done' : 'idle');
   const [isPublished, setPublished] = React.useState(published);
   const [publishError, setPublishError] = React.useState<string | null>(null);
+  const [zoomed, setZoomed] = React.useState(false);
 
   /**
    * Запазване: сваляне в телефона + отметка в гардероба.
@@ -78,16 +80,40 @@ export function ResultView({
   const onSave = React.useCallback(async () => {
     setSave('working');
     try {
-      const response = await fetch(resultUrl);
+      /**
+       * ═══ ДВЕ ГРЕШКИ БЯХА ТУК ═══
+       *
+       * 1. Сваляше се от `resultUrl` — подписаният адрес на R2. Това е друг
+       *    домейн, а R2 не праща `Access-Control-Allow-Origin`, тоест
+       *    `fetch` умираше в CORS. Показването работеше, защото `<img src>`
+       *    не минава през CORS — затова счупено беше само свалянето.
+       *
+       *    Сега файлът идва от нашия домейн: `/api/generate/{id}/file`.
+       *
+       * 2. `<a download>` не слага снимка в галерията на iPhone. Там няма
+       *    как да се пише в „Снимки" от уеб страница — освен през листа за
+       *    споделяне, в който стои „Save Image".
+       *
+       *    Затова, ако телефонът може да сподели файл, отваря се листът.
+       *    Копчето продължава да казва „Запази в галерията", защото това е
+       *    какво прави ЧОВЕКЪТ с него; през кой лист минава е наша работа.
+       */
+      const response = await fetch(`/api/generate/${generationId}/file`);
       if (!response.ok) throw new Error('няма снимка');
 
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `probvai-${generationId}.jpg`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const file = new File([blob], `probvai-${generationId}.jpg`, { type: 'image/jpeg' });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'ПРОБВАЙ' });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
 
       // Отметката. Провалът ѝ не проваля свалянето — затова е в свой опит.
       try {
@@ -97,10 +123,16 @@ export function ResultView({
       }
 
       setSave('done');
-    } catch {
+    } catch (error) {
+      // Отказан лист за споделяне НЕ е грешка — човекът е размислил.
+      // Без тази проверка всяко „Cancel" се показваше като „Не се свали".
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setSave('idle');
+        return;
+      }
       setSave('failed');
     }
-  }, [generationId, resultUrl]);
+  }, [generationId]);
 
   /**
    * Споделяне: първо Web Share API с файла, после сваляне.
@@ -162,12 +194,17 @@ export function ResultView({
 
   return (
     <main className="px-4 pb-8 pt-4">
+      {/* Натискането отваря снимката на цял екран. Рамката е за списъка и
+          за споделянето; когато се разглежда, тя само пречи. */}
       <LookFrame
         src={resultUrl}
         alt="Готовата проба"
         badge={style ? `${style.emoji} ${style.label}` : undefined}
         note={merchant ?? undefined}
+        onClick={() => setZoomed(true)}
       />
+
+      {zoomed && <PhotoViewer src={resultUrl} onClose={() => setZoomed(false)} />}
 
       {/* ── Главното действие ─────────────────────────────────────────────
           Едно широко лаймово копче. То е и свалянето, и гардеробът. */}
