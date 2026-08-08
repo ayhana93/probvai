@@ -1,5 +1,11 @@
 import { dbSystem } from '@probvai/db';
-import { env, uploadUserImage, type ImageKind, type UploadFailure } from '@probvai/core';
+import {
+  env,
+  storageConfigured,
+  uploadUserImage,
+  type ImageKind,
+  type UploadFailure,
+} from '@probvai/core';
 import { jsonError, requireUser } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -39,6 +45,16 @@ function messages(): Record<UploadFailure, string> {
 export async function POST(request: Request): Promise<Response> {
   const session = await requireUser();
   if (session.response) return session.response;
+
+  // Липсващото хранилище е наш пропуск, не негов. Казваме го така, вместо
+  // да го оставим да гледа „Нещо се обърка" и да пробва пак и пак.
+  if (!storageConfigured()) {
+    return jsonError(
+      503,
+      'STORAGE_NOT_CONFIGURED',
+      'Качването не работи в момента. Проблемът е при нас — пробвай пак по-късно.',
+    );
+  }
 
   let form: FormData;
   try {

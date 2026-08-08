@@ -75,6 +75,7 @@ export {
   getObject,
   deleteObject,
   deletePrefix,
+  storageConfigured,
   resetStorageClient,
 } from './storage';
 export type {

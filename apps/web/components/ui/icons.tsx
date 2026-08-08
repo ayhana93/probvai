@@ -68,6 +68,22 @@ export function ArrowRightIcon({ className }: Props) {
   );
 }
 
+/**
+ * ПЛЮСЪТ — „сложи снимка тук".
+ *
+ * Двете черти не са съвсем перпендикулярни и не се пресичат точно в средата.
+ * Съвсем правият кръст изглежда като системна икона; този се чете като
+ * начертан с маркер, като останалите.
+ */
+export function PlusIcon({ className }: Props) {
+  return (
+    <svg {...base} strokeWidth={2.4} className={cn('size-7', className)}>
+      <path d="M12.1 4.6c.2 4.9.1 9.8-.2 14.8" />
+      <path d="M4.5 11.8c4.9-.3 9.8-.2 14.8.1" />
+    </svg>
+  );
+}
+
 /** Права нарочно: посока, не рисунка. */
 export function ChevronRightIcon({ className }: Props) {
   return (

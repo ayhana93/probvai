@@ -79,11 +79,14 @@ export default function SnimkaPage() {
       form.append('setAsDefault', 'true');
 
       const response = await fetch('/api/upload', { method: 'POST', body: form });
+      // ⚠ `/api/upload` връща ключа НАПРАВО (`{ key, width, height, bytes }`),
+      // не в обвивка `image`. Тук се четеше `data.image.key` и заради това
+      // всяко успешно качване се показваше като „Не се качи."
       const data = (await response.json()) as
-        | { image: { key: string } }
+        | { key: string }
         | { error: { message: string } };
 
-      if (!response.ok || !('image' in data)) {
+      if (!response.ok || !('key' in data)) {
         setError('error' in data ? data.error.message : 'Не се качи. Пробвай пак.');
         setBusy(false);
         return;

@@ -4,6 +4,7 @@ import {
   startGeneration,
   type StartGenerationFailure,
 } from '@probvai/core';
+import { dbAsUser } from '@probvai/db';
 import { jsonError, readJson, requireUser } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -60,8 +61,33 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(400, 'BAD_REQUEST', 'Заявката не е правилно оформена.');
   }
 
-  if (typeof body.personKey !== 'string' || typeof body.garmentKey !== 'string') {
-    return jsonError(400, 'BAD_REQUEST', 'Трябват и двете снимки.');
+  if (typeof body.garmentKey !== 'string' || body.garmentKey.length === 0) {
+    return jsonError(400, 'NO_GARMENT', 'Избери снимка на дрехата.');
+  }
+
+  /**
+   * ═══ ЗАЩО СНИМКАТА НА ЧОВЕКА МОЖЕ ДА ЛИПСВА В ЗАЯВКАТА ═══
+   *
+   * Ключът към запазената снимка нарочно не стига до браузъра — интерфейсът
+   * иска „моята снимка", а не файл `eb3f9c…` (виж `/api/me/snimka`). Затова,
+   * когато човек не е качил нова снимка сега, тук се взима запазената.
+   *
+   * Качи ли нова, тя идва в заявката и се ползва тя. Проверката, че ключът
+   * е негов, си остава в `startGeneration` — тук не се доверяваме на нищо.
+   */
+  let personKey = typeof body.personKey === 'string' ? body.personKey : '';
+
+  if (personKey.length === 0) {
+    const me = await dbAsUser(session.user.id).user.findUnique({
+      where: { id: session.user.id },
+      select: { defaultPhotoKey: true },
+    });
+
+    if (!me?.defaultPhotoKey) {
+      return jsonError(400, 'NO_PERSON_PHOTO', 'Първо качи своя снимка.');
+    }
+
+    personKey = me.defaultPhotoKey;
   }
 
   // Съотношението се проверява тук и още веднъж по-навътре. Всичко извън
@@ -78,7 +104,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const result = await startGeneration({
     userId: session.user.id,
-    personKey: body.personKey,
+    personKey,
     garmentKey: body.garmentKey,
     aspectRatio,
     source,

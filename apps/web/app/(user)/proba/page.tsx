@@ -3,8 +3,8 @@
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMe } from '@/lib/use-me';
+import { PhotoSlot } from '@/components/photo-slot';
 import { Button } from '@/components/ui/button';
-import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
 import { Tabs } from '@/components/ui/tabs';
 import { Sparks } from '@/components/ui/scribble';
@@ -83,7 +83,16 @@ function Proba() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [ratioOpen, setRatioOpen] = React.useState(false);
   const [link, setLink] = React.useState('');
-  const [garment, setGarment] = React.useState(false);
+
+  /**
+   * Ключовете на качените снимки.
+   *
+   * `null` значи „още няма". Преди тук стоеше `boolean` и низът
+   * `'PLACEHOLDER'` отиваше към сървъра — екранът изглеждаше готов, а
+   * генерация не тръгваше никога.
+   */
+  const [personKey, setPersonKey] = React.useState<string | null>(null);
+  const [garmentKey, setGarmentKey] = React.useState<string | null>(null);
 
   /**
    * „Пробвай този аутфит" от Lookbook.
@@ -93,7 +102,6 @@ function Proba() {
    * евтино; чакането не е.
    */
   const inspiration = params.get('vdahnovenie');
-  const [borrowedKey, setBorrowedKey] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!inspiration) return;
@@ -103,8 +111,7 @@ function Proba() {
       .then((response) => (response.ok ? response.json() : null))
       .then((data: { garmentKey: string } | null) => {
         if (alive && data) {
-          setBorrowedKey(data.garmentKey);
-          setGarment(true);
+          setGarmentKey(data.garmentKey);
           setTab('upload');
         }
       })
@@ -117,9 +124,22 @@ function Proba() {
 
   const credits = me?.credits ?? 0;
   const [starting, setStarting] = React.useState(false);
+  // Какво точно се случва в момента. При линк пътят е от две части и
+  // мълчаливото копче кара човек да мисли, че е забило.
+  const [stage, setStage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const hasPhoto = me?.hasDefaultPhoto ?? false;
-  const ready = hasPhoto && (tab === 'link' ? link.trim().length > 0 : garment);
+
+  /**
+   * ═══ КОГА СТЪПКАТА Е НАИСТИНА ЗАВЪРШЕНА ═══
+   *
+   * Стъпка 1 е готова, ако има запазена снимка ИЛИ ако сега е качена нова.
+   * Стъпка 2 — ако сървърът е върнал ключ за дрехата, или ако е поставен
+   * линк. Само тогава копчето се отключва: процес с пропусната стъпка
+   * няма как да бъде завършен, защото няма какво да се прати.
+   */
+  const hasPhoto = Boolean(personKey) || (me?.hasDefaultPhoto ?? false);
+  const hasGarment = tab === 'link' ? link.trim().length > 0 : Boolean(garmentKey);
+  const ready = hasPhoto && hasGarment;
 
   /**
    * Пускането на генерация.
@@ -134,18 +154,72 @@ function Proba() {
     setError(null);
 
     try {
+      /**
+       * ═══ ЛИНКЪТ СТАВА КЛЮЧ ПРЕДИ ГЕНЕРАЦИЯТА ═══
+       *
+       * Генерацията работи само с файлове в нашето хранилище — чужд адрес
+       * не влиза никъде. Затова линкът първо минава през
+       * `/api/extract-garment`, който отваря страницата, взима снимката на
+       * продукта и я качва. Едва тогава има какво да се пробва.
+       *
+       * Прави се тук, а не при писане на линка: докато човек го поставя и
+       * поправя, всяко натискане на клавиш би пускало обръщение навън.
+       */
+      let key = garmentKey;
+      let merchant: string | null = null;
+
+      if (tab === 'link') {
+        setStage('Взимаме дрехата от линка...');
+
+        const taken = await fetch('/api/extract-garment', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ url: link.trim() }),
+        });
+
+        const found = (await taken.json()) as
+          | { garmentKey: string; merchant: string | null }
+          | { error: { message: string } };
+
+        if (!taken.ok || !('garmentKey' in found)) {
+          setError(
+            'error' in found
+              ? found.error.message
+              : 'Не успях да взема дрехата от този линк. Пробвай със снимка.',
+          );
+          setStarting(false);
+          setStage(null);
+          return;
+        }
+
+        key = found.garmentKey;
+        merchant = found.merchant;
+        setGarmentKey(found.garmentKey);
+      }
+
+      if (!key) {
+        setError('Липсва снимка на дрехата.');
+        setStarting(false);
+        setStage(null);
+        return;
+      }
+
+      setStage('Пускаме пробата...');
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          personKey: 'PLACEHOLDER',
-          garmentKey: borrowedKey ?? 'PLACEHOLDER',
+          // Празно значи „ползвай запазената снимка" — ключът ѝ нарочно
+          // не стига до браузъра.
+          ...(personKey ? { personKey } : {}),
+          garmentKey: key,
           aspectRatio: ratio,
           // Линкът е единственият случай, в който знаем от кой магазин е
           // дрехата. При качена снимка не пращаме магазин — и после в
           // гардероба не пише име, вместо да пише измислено.
           ...(tab === 'link'
-            ? { source: 'LINK', productUrl: link.trim() }
+            ? { source: 'LINK', productUrl: link.trim(), merchant }
             : { source: 'UPLOAD' }),
         }),
       });
@@ -157,6 +231,7 @@ function Proba() {
       if (!response.ok || !('generationId' in data)) {
         setError('error' in data ? data.error.message : 'Нещо се обърка. Пробвай пак.');
         setStarting(false);
+        setStage(null);
         return;
       }
 
@@ -164,6 +239,7 @@ function Proba() {
     } catch {
       setError('Няма връзка. Провери интернета и пробвай пак.');
       setStarting(false);
+      setStage(null);
     }
   }
 
@@ -176,7 +252,7 @@ function Proba() {
 
       {inspiration && (
         <p className="enter-rise mt-3 rounded-[var(--radius-card)] bg-violet-wash px-4 py-3 text-[13.5px] leading-snug text-ink-70">
-          {borrowedKey
+          {garmentKey
             ? 'Дрехата от избраната визия е готова. Остава да натиснеш.'
             : 'Взимаме дрехата от избраната визия...'}
         </p>
@@ -190,13 +266,17 @@ function Proba() {
         </div>
 
         <div className="mt-3 flex gap-3">
-          <Patch
-            material="paper"
-            className="grid h-[152px] w-[114px] shrink-0 place-items-center overflow-hidden"
-          >
-            {/* Запазената снимка. Скелет, докато се зареди — не въртящо кръгче. */}
-            <div className="skeleton size-full" />
-          </Patch>
+          {/* Запазената снимка се показва като начална. Натискането отваря
+              галерията — и старата снимка се сменя със новата. */}
+          <PhotoSlot
+            kind="person"
+            setAsDefault
+            value={personKey}
+            onChange={setPersonKey}
+            hint="Качи своя снимка"
+            {...(me?.hasDefaultPhoto ? { fallbackSrc: '/api/me/snimka' } : {})}
+            className="h-[172px] w-[130px] shrink-0"
+          />
 
           <div className="flex flex-1 flex-col justify-between py-0.5">
             <ul className="space-y-1.5">
@@ -212,9 +292,11 @@ function Proba() {
               </li>
             </ul>
 
-            <Button variant="quiet" size="sm" className="mt-3 self-start">
-              Смени снимката
-            </Button>
+            <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
+              {hasPhoto
+                ? 'Натисни снимката, за да я смениш.'
+                : 'Натисни плюса и избери снимка от телефона.'}
+            </p>
           </div>
         </div>
       </section>
@@ -222,7 +304,7 @@ function Proba() {
       {/* ── Стъпка 2 ────────────────────────────────────────────────────── */}
       <section className="mt-8">
         <div className="flex items-center gap-3">
-          <StepBadge n={2} done={ready} />
+          <StepBadge n={2} done={hasGarment} />
           <h2 className="text-[17px] font-semibold">Дрехата</h2>
         </div>
 
@@ -252,18 +334,13 @@ function Proba() {
             />
           </div>
         ) : (
-          <button
-            onClick={() => setGarment((value) => !value)}
-            className={cn(
-              'pressable enter-pop mt-3 grid h-32 w-full place-items-center',
-              'rounded-[var(--radius-card)] border-2 border-dashed bg-paper-2',
-              garment ? 'border-lime-deep' : 'border-ink-25',
-            )}
-          >
-            <span className="text-[14px] font-semibold text-ink-45">
-              {garment ? 'Снимката е избрана' : 'Избери снимка от телефона'}
-            </span>
-          </button>
+          <PhotoSlot
+            kind="garment"
+            value={garmentKey}
+            onChange={setGarmentKey}
+            hint="Качи снимка на дрехата"
+            className="enter-pop mt-3 h-40 w-full"
+          />
         )}
 
         <p className="mt-2.5 text-[13px] leading-snug text-ink-45">
@@ -284,7 +361,13 @@ function Proba() {
           busy={starting}
           onClick={() => void start()}
         >
-          {starting ? 'Пускаме я...' : ready ? 'Генерирай · 1 кредит' : 'Първо избери дреха'}
+          {starting
+            ? (stage ?? 'Пускаме я...')
+            : ready
+              ? 'Генерирай · 1 кредит'
+              : !hasPhoto
+                ? 'Първо качи своя снимка'
+                : 'Сега избери дреха'}
         </Button>
 
         <button
