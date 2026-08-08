@@ -20,38 +20,73 @@ import type { AspectRatio, PollResult, RunInput, TryOnProvider } from './types';
 
 const MODEL_NAME = 'tryon-max';
 
+/**
+ * FASHN Try-On Max configuration.
+ *
+ * BALANCED + 1K
+ *
+ * Do not change these values without also updating COST_USD below.
+ */
 const FIXED_SETTINGS = {
-  generation_mode: 'fast', // НЕ променяй. Определя себестойността.
-  resolution: '1k', // НЕ променяй. Определя себестойността.
+  generation_mode: 'balanced',
+  resolution: '1k',
 } as const;
 
 /**
- * ⚠ ВНИМАНИЕ ЗА `resolution`: FASHN приема стойността с МАЛКА буква — `1k`.
- * В заданието е записана като `1K`. Изпратено с главна буква, API-то
- * отхвърля заявката.
+ * FASHN cost for one generated image:
+ *
+ * balanced + 1k = 2 FASHN credits
+ * 1 FASHN credit = $0.075
+ * Total = $0.15 per generation
  */
-
-/** Себестойност за едно изображение при fast + 1k. Върви заедно с горното. */
-const COST_USD = 0.075;
+const COST_USD = 0.15;
 
 /**
- * Съотношенията, които FASHN приема за този модел.
- * Нашият списък (`ALLOWED_ASPECT_RATIOS`) е подмножество, без `auto`.
+ * Aspect ratios supported by FASHN Try-On Max.
+ *
+ * "auto" is handled separately and means that
+ * no aspect_ratio is sent to FASHN.
  */
 const SUPPORTED_RATIOS = new Set([
-  '21:9', '16:9', '5:4', '4:3', '3:2', '1:1', '2:3', '3:4', '4:5', '9:16',
+  '21:9',
+  '16:9',
+  '5:4',
+  '4:3',
+  '3:2',
+  '1:1',
+  '2:3',
+  '3:4',
+  '4:5',
+  '9:16',
 ]);
 
-function aspectRatioInput(aspectRatio: AspectRatio): Record<string, string> {
-  // `auto` значи „не казвай нищо на доставчика" — той решава по входа.
-  if (aspectRatio === 'auto') return {};
-  if (!SUPPORTED_RATIOS.has(aspectRatio)) return {};
-  return { aspect_ratio: aspectRatio };
+function aspectRatioInput(
+  aspectRatio: AspectRatio
+): Record<string, string> {
+  // "auto" means: let FASHN decide based on the input.
+  if (aspectRatio === 'auto') {
+    return {};
+  }
+
+  // Ignore unsupported aspect ratios instead of sending
+  // an invalid value to FASHN.
+  if (!SUPPORTED_RATIOS.has(aspectRatio)) {
+    return {};
+  }
+
+  return {
+    aspect_ratio: aspectRatio,
+  };
 }
 
 export class FashnTryonMax implements TryOnProvider {
   readonly name = 'fashn_tryon_max' as const;
+
+  /**
+   * Estimated provider cost for one generated image.
+   */
   readonly costUSD = COST_USD;
+
   readonly supportsAspectRatio = true;
 
   async run(input: RunInput): Promise<{ jobId: string }> {
@@ -59,13 +94,21 @@ export class FashnTryonMax implements TryOnProvider {
       model_image: input.personUrl,
       product_image: input.garmentUrl,
 
+      // Fixed FASHN configuration:
+      // balanced + 1k
       ...FIXED_SETTINGS,
+
+      // Only send aspect_ratio when valid.
       ...aspectRatioInput(input.aspectRatio),
 
+      // We only generate one image per request.
       num_images: 1,
+
+      // JPEG keeps file size smaller for the web.
       output_format: 'jpeg',
 
-      // Изходът се връща като base64 и НЕ остава на сървърите на FASHN.
+      // FASHN returns the generated image as base64.
+      // It does not remain stored on FASHN servers.
       return_base64: true,
     });
   }
