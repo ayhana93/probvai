@@ -108,22 +108,44 @@ const MARK_WIDTH_RATIO = 0.22;
 const MARK_MARGIN_RATIO = 0.035;
 
 /**
- * Прочитаният файл се пази. Работникът прави хиляди снимки и няма причина
- * да чете един и същ файл от диска за всяка.
+ * Подготвеният знак се пази в паметта.
  *
- * `null` значи „проверено е и го няма" — тогава се пада на надписа отдолу,
- * вместо снимката да излезе без никакъв знак.
+ * ═══ ЗАЩО СЕ ПОДГОТВЯ, А НЕ СЕ ЧЕТЕ НАПРАВО ═══
+ *
+ * Изнесеният файл е 1536 × 1024 и 2.4 MB, а самият надпис заема средата му —
+ * наоколо има широка прозрачна ивица, точно като в `logo.png`.
+ *
+ * Подадено така, „22% от широчината" се смята върху ЦЕЛИЯ файл, значи върху
+ * полетата. Знакът излиза чувствително по-малък от искания и се озовава
+ * по-навътре от ъгъла, отколкото трябва — виждаше се на пробата.
+ *
+ * Затова тук файлът се реже до самия надпис и се смалява веднъж. Оттам
+ * нататък „22%" значи 22% ЗНАК.
+ *
+ * Работникът прави хиляди снимки — тази работа се върши веднъж на процес.
+ * `null` значи „проверено е и файла го няма": тогава се пада на надписа.
  */
 let markCache: Buffer | null | undefined;
 
-function loadMark(): Buffer | null {
+/** Докъде се смалява подготвеният знак. Повече никога не му трябват. */
+const MARK_SOURCE_WIDTH = 900;
+
+async function loadMark(): Promise<Buffer | null> {
   if (markCache !== undefined) return markCache;
+
   try {
-    markCache = readFileSync(markPath());
+    markCache = await sharp(readFileSync(markPath()))
+      // Прагът 1 значи „режи всичко напълно прозрачно". По-висок би започнал
+      // да яде и меките ръбове на самия надпис.
+      .trim({ threshold: 1 })
+      .resize({ width: MARK_SOURCE_WIDTH, withoutEnlargement: true })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
   } catch {
     console.warn(`[воден знак] липсва ${markPath()} — падам на надпис.`);
     markCache = null;
   }
+
   return markCache;
 }
 
@@ -183,10 +205,13 @@ export async function applyWatermark(
   const markWidth = Math.max(80, Math.round(width * MARK_WIDTH_RATIO));
   const margin = Math.round(width * MARK_MARGIN_RATIO);
 
-  const file = loadMark();
+  const file = await loadMark();
 
   let overlay: Buffer;
   let markHeight: number;
+  // Платното с знака е с няколко пиксела по-широко от самия знак — там
+  // лежи сянката. Отстоянието от ръба се смята спрямо ПЛАТНОТО.
+  let overlayWidth = markWidth;
 
   if (file) {
     // Смалява се веднъж, до истинската широчина. Подаден в пълен размер,
@@ -208,7 +233,7 @@ export async function applyWatermark(
      * Другата възможност беше `ensureAlpha`, но той пипа само файлове БЕЗ
      * алфа — а нашият знак е PNG с прозрачност и там не прави нищо.
      */
-    overlay = await sharp(resized)
+    const faded = await sharp(resized)
       .composite([
         {
           input: Buffer.from(
@@ -220,6 +245,53 @@ export async function applyWatermark(
       ])
       .png()
       .toBuffer();
+
+    /**
+     * ═══ ЗАЩО ИМА СЯНКА ═══
+     *
+     * Знакът е светъл. Пробите обаче са предимно на светло — плаж, дневна
+     * светлина, бяла стена — и бял контур върху бял пясък просто изчезва.
+     *
+     * Затова под него ляга собственият му силует, черен и размит. Не се
+     * вижда като сянка; вижда се като това, че знакът СЕ ЧЕТЕ и на светла
+     * снимка. Прави се от алфата на самия знак, тоест следва формата му
+     * точно, каквото и да е логото утре.
+     */
+    const shadow = await sharp(faded)
+      .composite([
+        {
+          input: Buffer.from(
+            `<svg width="${markWidth}" height="${markHeight}" xmlns="http://www.w3.org/2000/svg">` +
+              `<rect width="${markWidth}" height="${markHeight}" fill="#000000" fill-opacity="0.55"/></svg>`,
+          ),
+          blend: 'in',
+        },
+      ])
+      .blur(Math.max(1, markWidth * 0.012))
+      .png()
+      .toBuffer();
+
+    // Двата слоя се сглобяват в едно платно, за да се наложат наведнъж и
+    // отместването на сянката да е спрямо ЗНАКА, не спрямо снимката.
+    const pad = Math.max(2, Math.round(markWidth * 0.014));
+
+    overlay = await sharp({
+      create: {
+        width: markWidth + pad,
+        height: markHeight + pad,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([
+        { input: shadow, top: pad, left: pad },
+        { input: faded, top: 0, left: 0 },
+      ])
+      .png()
+      .toBuffer();
+
+    markHeight += pad;
+    overlayWidth = markWidth + pad;
   } else {
     markHeight = Math.round(markWidth * 0.34);
     overlay = fallbackSvg(width, markWidth, markHeight, text);
@@ -230,7 +302,7 @@ export async function applyWatermark(
       {
         input: overlay,
         top: Math.max(0, height - markHeight - margin),
-        left: Math.max(0, width - markWidth - margin),
+        left: Math.max(0, width - overlayWidth - margin),
         blend: 'over',
       },
     ])
