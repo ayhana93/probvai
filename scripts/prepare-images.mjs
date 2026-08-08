@@ -26,7 +26,7 @@
  * След смяна на който и да е изходен файл се пуска пак.
  */
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -111,6 +111,7 @@ async function main() {
 
   await flow();
   await appIcon();
+  await socialCard();
 }
 
 /**
@@ -307,6 +308,87 @@ async function appIcon() {
   console.log(
     `  ✓ public/icons/icon-512-maskable.png`.padEnd(32) + `${await sizeOf(maskable)} KB`,
   );
+  console.log('');
+}
+
+/**
+ * КАРТИНКАТА ПРИ СПОДЕЛЯНЕ
+ *
+ * Това, което се вижда, когато линкът се пусне във Facebook, Instagram,
+ * Viber, WhatsApp, Slack или iMessage.
+ *
+ * ═══ ЗАЩО НЕ Е ПРОСТО `logo.png` ═══
+ *
+ * Три причини, и трите чупят тихо:
+ *
+ * 1. ПРОЗРАЧНОСТ. Логото е с прозрачен фон. Всяка мрежа слага зад него
+ *    СВОЙ цвят — Messenger бяло, Slack тъмно сиво, Viber бяло. Тъмните
+ *    парчета на логото върху тъмен фон изчезват.
+ *
+ * 2. СЪОТНОШЕНИЕ. Мрежите режат до 1.91:1. Логото е 3:2 — тоест от него се
+ *    отрязват горе и долу, и то точно там, където са маркерните щрихи.
+ *
+ * 3. РАЗМЕР. Facebook отказва картинки под 200 пиксела и мащабира лошо
+ *    всичко под 600. 1200 × 630 е размерът, който всички приемат без
+ *    преработка.
+ *
+ * Затова тук се прави ОТДЕЛНА картинка: хартиен фон, логото в средата,
+ * точното съотношение. Нищо не се реже и фонът е наш, не техен.
+ */
+const OG_WIDTH = 1200;
+const OG_HEIGHT = 630;
+
+/** Каква част от широчината заема логото. Останалото е въздух. */
+const OG_LOGO_SCALE = 0.62;
+
+async function socialCard() {
+  console.log('  Картинката при споделяне:\n');
+
+  if (!existsSync(SOURCE)) {
+    console.log('  · липсва logo.png — пропускам.\n');
+    return;
+  }
+
+  const logoWidth = Math.round(OG_WIDTH * OG_LOGO_SCALE);
+  const logo = await sharp(SOURCE)
+    // Реже се прозрачното наоколо, за да е логото центрирано по САМИЯ надпис,
+    // а не по полетата на файла. Иначе изглежда изместено нагоре.
+    .trim({ threshold: 1 })
+    .resize({ width: logoWidth, withoutEnlargement: true })
+    .png()
+    .toBuffer();
+
+  const { height: logoHeight } = await sharp(logo).metadata();
+
+  const card = await sharp({
+    create: {
+      width: OG_WIDTH,
+      height: OG_HEIGHT,
+      channels: 4,
+      // Хартиеният фон на приложението. Плътен — никаква прозрачност.
+      background: { r: 0xfa, g: 0xf6, b: 0xef, alpha: 1 },
+    },
+  })
+    .composite([
+      {
+        input: logo,
+        top: Math.round((OG_HEIGHT - (logoHeight ?? 0)) / 2),
+        left: Math.round((OG_WIDTH - logoWidth) / 2),
+      },
+    ])
+    .png({ compressionLevel: 9, palette: true, quality: 92 })
+    .toBuffer();
+
+  // Един файл, два адреса. Next ги хваща по име и слага таговете сам;
+  // Twitter иска свой, иначе взима og-то — но с грешен размер на картата.
+  const appDir = resolve(root, 'apps/web/app');
+
+  for (const name of ['opengraph-image.png', 'twitter-image.png']) {
+    const out = resolve(appDir, name);
+    writeFileSync(out, card);
+    console.log(`  ✓ app/${name}`.padEnd(32) + `${await sizeOf(out)} KB`);
+  }
+
   console.log('');
 }
 

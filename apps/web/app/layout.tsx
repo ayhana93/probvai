@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Unbounded } from 'next/font/google';
 import './globals.css';
+import { SITE_NAME, SITE_TAGLINE, SITE_URL } from '@/lib/site';
 
 /**
  * Двата шрифта следват логото: буквите там са тежки, събрани и главни,
@@ -20,8 +21,49 @@ const text = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'ПРОБВАЙ',
-  description: 'Виж как ти стои дрехата, преди да я поръчаш.',
+  /**
+   * ═══ БЕЗ ТОВА КАРТИНКАТА ПРИ СПОДЕЛЯНЕ НЕ РАБОТИ ═══
+   *
+   * Next слага `opengraph-image.png` сам, но адресът излиза ОТНОСИТЕЛЕН, а
+   * всяка социална мрежа дърпа картинката от свой сървър — относителният
+   * адрес там не значи нищо. `metadataBase` е това, което го прави пълен.
+   *
+   * Пропуснат, Next тихо ползва `localhost:3000` и линкът се показва без
+   * картинка, без нищо да се оплаче.
+   */
+  metadataBase: new URL(SITE_URL),
+
+  title: SITE_NAME,
+  description: SITE_TAGLINE,
+
+  /**
+   * ═══ КАКВО СЕ ВИЖДА, КОГАТО ЛИНКЪТ СЕ ПУСНЕ НЯКЪДЕ ═══
+   *
+   * Картинката е `app/opengraph-image.png` — Next я закача по име, тук не
+   * се изброява. Прави се от `npm run images`: логото върху хартиен фон,
+   * 1200 × 630. Защо не самото `logo.png` — виж коментара в скрипта.
+   *
+   * `type: 'website'` е нарочно, не `article`: Facebook показва различна
+   * карта за двете, а тук няма автор и дата.
+   */
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_TAGLINE,
+    url: SITE_URL,
+    locale: 'bg_BG',
+  },
+
+  /**
+   * `summary_large_image` е разликата между картинка колкото пощенска марка
+   * вляво от текста и голяма карта над него. Без него X показва първото.
+   */
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_NAME,
+    description: SITE_TAGLINE,
+  },
 
   /**
    * ═══ КАКВО ТРЯБВА, ЗА ДА ИЗГЛЕЖДА КАТО ПРИЛОЖЕНИЕ НА ТЕЛЕФОНА ═══
