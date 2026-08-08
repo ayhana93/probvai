@@ -23,13 +23,13 @@ if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then
   fi
 
   echo "→ Прилагам миграциите..."
-  node node_modules/prisma/build/index.js migrate deploy \
+  node cli/node_modules/prisma/build/index.js migrate deploy \
     --schema packages/db/prisma/schema.prisma
 
   echo "→ Задавам паролите на работните роли..."
   # SQL-ът се сглобява от същия файл, който ползва и `npm run db:roles`.
   # `prisma db execute` е тук, защото в този образ няма нито tsx, нито `pg`.
-  node scripts/roles-sql.mjs | node node_modules/prisma/build/index.js db execute \
+  node scripts/roles-sql.mjs | node cli/node_modules/prisma/build/index.js db execute \
     --url "$DATABASE_URL" --stdin
 
   echo "→ Готово."

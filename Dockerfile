@@ -62,6 +62,32 @@ RUN npm run build --workspace @probvai/web
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Prisma CLI, в свое собствено дърво
+#
+# ═══ ЗАЩО НЕ СЕ КОПИРА ПРОСТО node_modules/prisma ═══
+#
+# Точно това правеше преди и контейнерът падаше с „Cannot find module 'effect'".
+# В монорепо npm вдига зависимостите нагоре: `node_modules/prisma` съдържа
+# самото CLI, но неговите зависимости лежат в общата папка — и остават там,
+# когато копираме само тази една.
+#
+# Изброяването им на ръка щеше да се счупи при първото вдигане на версията.
+# Затова CLI-то се инсталира отделно, със своите истински зависимости.
+# Версията идва от package.json на проекта, за да не се разминава с тази,
+# с която са писани миграциите.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM base AS prisma-cli
+
+COPY package.json ./
+
+RUN mkdir -p /cli \
+  && cd /cli \
+  && npm init -y > /dev/null \
+  && npm install --no-audit --no-fund \
+       "prisma@$(node -p "require('/app/package.json').devDependencies.prisma")"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Изпълнение
 # ─────────────────────────────────────────────────────────────────────────────
 FROM base AS runner
@@ -79,8 +105,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 
 # Prisma CLI и миграциите — за да може контейнерът сам да си вдигне схемата
 # при RUN_MIGRATIONS=1. Така пускането на нов хост е една команда.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=prisma-cli --chown=nextjs:nodejs /cli ./cli
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/prisma ./packages/db/prisma
 
 # Сглобява SQL-а за паролите на работните роли. Обикновен .mjs без
