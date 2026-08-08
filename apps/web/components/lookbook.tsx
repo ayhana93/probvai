@@ -4,14 +4,17 @@
  * ═══ КАКВО НЕ Е ═══
  *
  * Няма профили. Няма последователи. Няма чат. Няма коментари. Под всяка
- * визия има точно три неща:
+ * визия има точно ДВЕ неща:
  *
- *   ❤️  Харесай            задържа в галерията
- *   ⭐  Запази             задържа за после
- *   ✨  Пробвай този аутфит води обратно към генератора и харчи кредит
+ *   Харесване — тихо, вляво. Задържа в галерията.
+ *   Remix     — лаймово, вдясно. Взима дрехата от тази визия и я слага
+ *               направо в стъпка 2 на нова проба.
  *
- * Третото е това, което прави галерията полезна за нас. Останалите две я
- * правят приятна.
+ * Второто е единственото, което води някъде, и затова изглежда като копче.
+ *
+ * „Запази" беше трето и отпадна: три действия под всяка снимка, при две
+ * колонки на телефон, правят шест мънички цели за палец на един екран — и
+ * нито едно от тях не е ясно кое е главното.
  *
  * ═══ ЗАЩО НЯМА ИМЕНА ПОД СНИМКИТЕ ═══
  *
@@ -31,6 +34,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Patch } from '@/components/ui/patch';
+import { HeartIcon, RemixIcon } from '@/components/ui/icons';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
 import { R } from '@/lib/routes';
@@ -40,7 +44,6 @@ type Look = {
   category: string | null;
   likeCount: number;
   liked: boolean;
-  saved: boolean;
   mine: boolean;
 };
 
@@ -121,25 +124,23 @@ export function Lookbook() {
     return () => observer.disconnect();
   }, [end, load]);
 
-  async function toggle(look: Look, what: 'like' | 'save'): Promise<void> {
+  async function toggleLike(look: Look): Promise<void> {
     // Показваме промяната веднага и я връщаме назад при отказ. Копче, което
     // чака мрежата, се натиска два пъти.
     setLooks((current) =>
       current.map((item) =>
         item.id !== look.id
           ? item
-          : what === 'like'
-            ? {
-                ...item,
-                liked: !item.liked,
-                likeCount: item.likeCount + (item.liked ? -1 : 1),
-              }
-            : { ...item, saved: !item.saved },
+          : {
+              ...item,
+              liked: !item.liked,
+              likeCount: item.likeCount + (item.liked ? -1 : 1),
+            },
       ),
     );
 
     try {
-      const response = await fetch(`/api/lookbook/${look.id}/${what}`, {
+      const response = await fetch(`/api/lookbook/${look.id}/like`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('отказано');
@@ -218,36 +219,50 @@ export function Lookbook() {
                   )}
                 </div>
 
-                {/* ── Трите действия ───────────────────────────────────── */}
-                <div className="mt-2 flex items-center justify-between px-0.5 pb-0.5">
-                  <div className="flex items-center gap-1">
-                    <IconToggle
-                      label={look.liked ? 'Махни харесването' : 'Харесай'}
-                      on={look.liked}
-                      disabled={look.mine}
-                      onClick={() => void toggle(look, 'like')}
-                    >
-                      ❤️
-                    </IconToggle>
-                    <span className="min-w-4 text-[12px] font-semibold tabular-nums text-ink-45">
+                {/* ═══ ДВЕ КОПЧЕТА, НЕ ТРИ ═══
+
+                    „Запази" отпадна. Три действия под всяка снимка при две
+                    колонки на телефон значи шест мънички цели за палец на
+                    един екран — и нито едно от тях не е ясно кое е главното.
+
+                    Останаха харесването (тихо, вляво) и remix (лаймово,
+                    вдясно). Второто е ЕДИНСТВЕНОТО, което води някъде: взима
+                    дрехата от тази визия и я слага направо в стъпка 2 на нова
+                    проба. Затова изглежда като копче, а харесването — не.
+
+                    Иконите са начертани, не емоджита: емоджито се рисува от
+                    системата, изглежда различно на всеки телефон и цветът му
+                    не се управлява. */}
+                <div className="mt-2 flex items-center justify-between gap-2 px-0.5 pb-0.5">
+                  <button
+                    aria-label={look.liked ? 'Махни харесването' : 'Харесай'}
+                    aria-pressed={look.liked}
+                    disabled={look.mine}
+                    onClick={() => void toggleLike(look)}
+                    className={cn(
+                      'pressable flex h-9 items-center gap-1 rounded-full px-2',
+                      'transition-colors duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+                      look.liked ? 'text-danger' : 'text-ink-45',
+                      look.mine && 'pointer-events-none opacity-30',
+                    )}
+                  >
+                    <HeartIcon filled={look.liked} />
+                    <span className="min-w-3 text-[12px] font-semibold tabular-nums">
                       {look.likeCount > 0 ? look.likeCount : ''}
                     </span>
-
-                    <IconToggle
-                      label={look.saved ? 'Махни от запазени' : 'Запази'}
-                      on={look.saved}
-                      onClick={() => void toggle(look, 'save')}
-                    >
-                      ⭐
-                    </IconToggle>
-                  </div>
+                  </button>
 
                   <button
-                    aria-label="Пробвай този аутфит"
+                    aria-label="Пробвай тази дреха върху себе си"
                     onClick={() => router.push(`${R.tryOn}?vdahnovenie=${look.id}`)}
-                    className="pressable rounded-full bg-lime px-2.5 py-1.5 text-[11.5px] font-semibold text-ink shadow-[0_2px_0_var(--color-lime-deep)]"
+                    className={cn(
+                      'pressable flex h-9 items-center gap-1.5 rounded-full bg-lime pl-2.5 pr-3',
+                      'text-[12px] font-semibold text-ink',
+                      'shadow-[0_2px_0_var(--color-lime-deep)]',
+                    )}
                   >
-                    ✨ Пробвай
+                    <RemixIcon className="size-[18px]" />
+                    Remix
                   </button>
                 </div>
               </Patch>
@@ -291,37 +306,6 @@ function Chip({
         'pressable shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-semibold',
         'transition-colors duration-[var(--dur-menu)] ease-[var(--ease-out)]',
         active ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-70',
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function IconToggle({
-  label,
-  on,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  on: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      aria-label={label}
-      aria-pressed={on}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        'pressable grid size-8 place-items-center rounded-full text-[14px]',
-        'transition-[opacity,transform] duration-[var(--dur-menu)] ease-[var(--ease-out)]',
-        on ? 'opacity-100' : 'opacity-35',
-        disabled && 'pointer-events-none opacity-20',
       )}
     >
       {children}

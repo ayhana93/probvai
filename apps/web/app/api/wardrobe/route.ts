@@ -22,14 +22,20 @@ export async function GET(request: Request): Promise<Response> {
   const session = await requireUser();
   if (session.response) return session.response;
 
-  const raw = new URL(request.url).searchParams.get('category');
+  const params = new URL(request.url).searchParams;
+  const raw = params.get('category');
   const category = isStyleCategory(raw) ? raw : null;
+
+  // „Любими" е филтър наравно с категориите, не отделен екран: те са едно и
+  // също нещо за човека — начин да види по-малко наведнъж.
+  const onlyFavorites = params.get('favorite') === '1';
 
   const generations = await dbAsUser(session.user.id).generation.findMany({
     where: {
       status: 'DONE',
       resultKey: { not: null },
       ...(category ? { category } : {}),
+      ...(onlyFavorites ? { favoritedAt: { not: null } } : {}),
     },
     orderBy: { createdAt: 'desc' },
     take: 120,
@@ -41,6 +47,7 @@ export async function GET(request: Request): Promise<Response> {
       category: true,
       watermarked: true,
       savedAt: true,
+      favoritedAt: true,
       publishedAt: true,
       createdAt: true,
     },
@@ -55,6 +62,7 @@ export async function GET(request: Request): Promise<Response> {
       category: generation.category,
       watermarked: generation.watermarked,
       saved: generation.savedAt !== null,
+      favorited: generation.favoritedAt !== null,
       published: generation.publishedAt !== null,
       createdAt: generation.createdAt.toISOString(),
     })),

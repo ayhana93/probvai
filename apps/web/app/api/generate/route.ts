@@ -4,7 +4,6 @@ import {
   startGeneration,
   type StartGenerationFailure,
 } from '@probvai/core';
-import { dbAsUser } from '@probvai/db';
 import { jsonError, readJson, requireUser } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -66,29 +65,22 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   /**
-   * ═══ ЗАЩО СНИМКАТА НА ЧОВЕКА МОЖЕ ДА ЛИПСВА В ЗАЯВКАТА ═══
+   * ═══ СНИМКАТА НА ЧОВЕКА ИДВА В ЗАЯВКАТА, ВИНАГИ ═══
    *
-   * Ключът към запазената снимка нарочно не стига до браузъра — интерфейсът
-   * иска „моята снимка", а не файл `eb3f9c…` (виж `/api/me/snimka`). Затова,
-   * когато човек не е качил нова снимка сега, тук се взима запазената.
+   * Тук имаше отстъпка: липсва ли `personKey`, се взимаше запазената снимка
+   * на профила. Тя обаче е „последната качена", а това не е същото като
+   * „снимката, с която човекът иска да пробва" — и когато последното качено
+   * се окажеше профилна снимка, пробата тръгваше с нея.
    *
-   * Качи ли нова, тя идва в заявката и се ползва тя. Проверката, че ключът
-   * е негов, си остава в `startGeneration` — тук не се доверяваме на нищо.
+   * Затова стъпка 1 вече започва празна и ключът се подава изрично. Отказът
+   * тук е последната преграда: по-добре ясна грешка, отколкото изхарчен
+   * кредит върху грешната снимка.
    */
-  let personKey = typeof body.personKey === 'string' ? body.personKey : '';
-
-  if (personKey.length === 0) {
-    const me = await dbAsUser(session.user.id).user.findUnique({
-      where: { id: session.user.id },
-      select: { defaultPhotoKey: true },
-    });
-
-    if (!me?.defaultPhotoKey) {
-      return jsonError(400, 'NO_PERSON_PHOTO', 'Първо качи своя снимка.');
-    }
-
-    personKey = me.defaultPhotoKey;
+  if (typeof body.personKey !== 'string' || body.personKey.length === 0) {
+    return jsonError(400, 'NO_PERSON_PHOTO', 'Качи своя снимка на стъпка 1.');
   }
+
+  const personKey = body.personKey;
 
   // Съотношението се проверява тук и още веднъж по-навътре. Всичко извън
   // списъка е отказ БЕЗ харчене на кредит.

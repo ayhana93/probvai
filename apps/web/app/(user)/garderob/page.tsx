@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
 import { Sparks, Zigzag } from '@/components/ui/scribble';
+import { HeartIcon, RemixIcon, CrossIcon } from '@/components/ui/icons';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
 import { useMe } from '@/lib/use-me';
@@ -42,8 +43,109 @@ type Item = {
   category: string | null;
   watermarked: boolean;
   saved: boolean;
+  favorited: boolean;
   published: boolean;
 };
+
+/**
+ * Чип за филтриране.
+ *
+ * Един и същ размер и форма за всички — включително за „Любими" с иконата.
+ * Различната височина между съседни чипове се вижда веднага, дори човек да
+ * не знае какво го дразни.
+ */
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'pressable flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5',
+        'text-[12.5px] font-semibold',
+        'transition-colors duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+        active ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-70',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Едно от четирите действия под снимката на цял екран.
+ *
+ * ═══ ЕДНАКВИ ОТВЪН, РАЗЛИЧНИ ОТВЪТРЕ ═══
+ *
+ * Размерът, отстоянията и надписът не зависят от състоянието — мени се само
+ * цветът. Затова редът не мърда, когато нещо се включи или изключи, а
+ * състоянието пак се вижда от разстояние.
+ */
+function SheetAction({
+  label,
+  active,
+  activeClass,
+  danger,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  active?: boolean;
+  activeClass?: string;
+  danger?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={cn(
+        'pressable flex h-[68px] flex-col items-center justify-center gap-1.5 rounded-2xl px-1',
+        'transition-colors duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+        active
+          ? (activeClass ?? 'bg-paper text-ink')
+          : danger
+            ? 'bg-danger/20 text-danger-soft'
+            : 'bg-paper/12 text-paper',
+        disabled && 'pointer-events-none opacity-35',
+      )}
+    >
+      {children}
+      <span className="text-[11.5px] font-semibold leading-none">{label}</span>
+    </button>
+  );
+}
+
+/** Кошчето. Само тук — затова живее при екрана, а не в общия комплект. */
+function TrashIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="size-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4.6 6.6c4.9-.4 9.9-.4 14.8 0" />
+      <path d="M9.4 6.4c-.1-.8-.1-1.5 0-2 .1-.9.8-1.4 1.6-1.4h2c.8 0 1.5.5 1.6 1.4.1.5.1 1.2 0 2" />
+      <path d="M6.4 8.6c.3 3.9.6 7.7 1 11.5 3.1.3 6.2.3 9.3 0 .4-3.8.7-7.6 1-11.5" />
+      <path d="M10.4 11.4c.1 2 .1 4 0 5.9M13.6 11.4c-.1 2-.1 4 0 5.9" />
+    </svg>
+  );
+}
 
 /** Колко трябва да се задържи, за да значи „изтрий". */
 const HOLD_MS = 520;
@@ -122,18 +224,34 @@ function Tile({
           </span>
         ) : null}
 
+        {/* ═══ ЗНАЧКИТЕ ═══
+
+            „В Lookbook" беше лаймово кръгче с емоджи ✨ — жълто на светла
+            снимка, тоест не се виждаше. Сега е тъмно кръгче с лаймов знак:
+            тъмното държи контраста върху ВСЯКА снимка, а лаймът остава
+            цветът, който значи „публично".
+
+            Надписът „воден знак" го няма. Той казваше на човека нещо, което
+            и без това вижда върху самата снимка, и то с лилаво петно точно
+            там, където гледа. Копчето „Махни водния знак" стои на екрана с
+            резултата — там има смисъл, защото там може да се направи нещо. */}
         {item.published && (
           <span
             title="В Lookbook"
-            className="absolute right-2 top-2 rounded-full bg-lime px-1.5 py-1 text-[10.5px] font-semibold text-ink"
+            aria-label="В Lookbook"
+            className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-ink/85 text-lime backdrop-blur-sm"
           >
-            ✨
+            <Sparks className="h-3 w-4" />
           </span>
         )}
 
-        {item.watermarked && (
-          <span className="absolute bottom-2 right-2 rounded-full bg-violet px-2 py-1 text-[10.5px] font-semibold text-white">
-            воден знак
+        {item.favorited && (
+          <span
+            title="Любима"
+            aria-label="Любима"
+            className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-ink/85 text-danger backdrop-blur-sm"
+          >
+            <HeartIcon filled className="size-3.5" />
           </span>
         )}
       </Patch>
@@ -144,7 +262,15 @@ function Tile({
 export default function GarderobPage() {
   const [items, setItems] = React.useState<Item[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [category, setCategory] = React.useState<StyleKey | null>(null);
+  /**
+   * ═══ ЕДНО СЪСТОЯНИЕ ЗА ВСИЧКИ ФИЛТРИ ═══
+   *
+   * „Любими" стои в същия ред като категориите, защото за човека е същото
+   * нещо — начин да види по-малко наведнъж. Държано като отделно булево до
+   * `category`, двете можеха да са включени едновременно и редът щеше да
+   * показва два натиснати чипа, а списъкът — трето нещо.
+   */
+  const [filter, setFilter] = React.useState<'all' | 'fav' | StyleKey>('all');
   const [open, setOpen] = React.useState<Item | null>(null);
   const [pendingDelete, setPendingDelete] = React.useState<Item | null>(null);
   const [pendingCategory, setPendingCategory] = React.useState<Item | null>(null);
@@ -154,8 +280,10 @@ export default function GarderobPage() {
     let alive = true;
     setLoading(true);
 
-    const params = category ? `?category=${category}` : '';
-    void fetch(`/api/wardrobe${params}`, { cache: 'no-store' })
+    const query =
+      filter === 'all' ? '' : filter === 'fav' ? '?favorite=1' : `?category=${filter}`;
+
+    void fetch(`/api/wardrobe${query}`, { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : { items: [] }))
       .then((data: { items: Item[] }) => {
         if (alive) setItems(data.items);
@@ -168,7 +296,7 @@ export default function GarderobPage() {
     return () => {
       alive = false;
     };
-  }, [category]);
+  }, [filter]);
 
   // Escape затваря целия екран.
   React.useEffect(() => {
@@ -242,6 +370,42 @@ export default function GarderobPage() {
     }
   }
 
+  /**
+   * Любима.
+   *
+   * Показва се веднага и се връща назад при отказ — копче, което чака
+   * мрежата, се натиска два пъти. Обновяват се и списъкът, и отвореното
+   * копие: те са две части от едно състояние и разминаването им личи в мига,
+   * в който екранът се затвори.
+   */
+  async function toggleFavorite(item: Item): Promise<void> {
+    const next = !item.favorited;
+
+    const apply = (value: boolean) => {
+      setItems((current) =>
+        current.map((entry) =>
+          entry.id === item.id ? { ...entry, favorited: value } : entry,
+        ),
+      );
+      setOpen((current) =>
+        current && current.id === item.id ? { ...current, favorited: value } : current,
+      );
+    };
+
+    apply(next);
+
+    try {
+      const response = await fetch(`/api/generate/${item.id}/favorite`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ favorited: next }),
+      });
+      if (!response.ok) throw new Error('отказано');
+    } catch {
+      apply(!next);
+    }
+  }
+
   async function remove(item: Item): Promise<void> {
     setItems((current) => current.filter((entry) => entry.id !== item.id));
     setPendingDelete(null);
@@ -252,7 +416,7 @@ export default function GarderobPage() {
     }
   }
 
-  const empty = !loading && items.length === 0 && category === null;
+  const empty = !loading && items.length === 0 && filter === 'all';
 
   if (empty) {
     return (
@@ -292,32 +456,29 @@ export default function GarderobPage() {
         екран, задръж за изтриване
       </p>
 
-      {/* ── Категориите ───────────────────────────────────────────────────
-          Пробите се подреждат сами. Тези копчета само филтрират. */}
+      {/* ── Филтрите ──────────────────────────────────────────────────────
+          Пробите се подреждат сами по категория. Тези копчета само
+          стесняват показаното. „Любими" е втора — веднага след „Всички",
+          защото е единствената, която човек си слага сам. */}
       <div className="-mx-5 mt-4 overflow-x-auto px-5 pb-1">
         <div className="flex gap-2">
-          <button
-            onClick={() => setCategory(null)}
-            aria-pressed={category === null}
-            className={cn(
-              'pressable shrink-0 rounded-full px-3.5 py-2 text-[12.5px] font-semibold',
-              category === null ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-70',
-            )}
-          >
+          <FilterChip active={filter === 'all'} onClick={() => setFilter('all')}>
             Всички
-          </button>
+          </FilterChip>
+
+          <FilterChip active={filter === 'fav'} onClick={() => setFilter('fav')}>
+            <HeartIcon filled={filter === 'fav'} className="size-3.5" />
+            Любими
+          </FilterChip>
+
           {STYLE_KEYS.map((key) => (
-            <button
+            <FilterChip
               key={key}
-              onClick={() => setCategory(category === key ? null : key)}
-              aria-pressed={category === key}
-              className={cn(
-                'pressable shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-semibold',
-                category === key ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-70',
-              )}
+              active={filter === key}
+              onClick={() => setFilter(filter === key ? 'all' : key)}
             >
               {STYLE_LABELS[key].emoji} {STYLE_LABELS[key].label}
-            </button>
+            </FilterChip>
           ))}
         </div>
       </div>
@@ -329,7 +490,9 @@ export default function GarderobPage() {
         </div>
       ) : items.length === 0 ? (
         <p className="mt-8 text-center text-[14px] text-ink-45">
-          Няма проби в тази категория.
+          {filter === 'fav'
+            ? 'Още нямаш любими. Отвори проба и натисни сърцето.'
+            : 'Няма проби в тази категория.'}
         </p>
       ) : (
         <ul className="stagger mt-5 grid grid-cols-2 gap-3">
@@ -345,7 +508,24 @@ export default function GarderobPage() {
         </ul>
       )}
 
-      {/* ── Цял екран ──────────────────────────────────────────────────── */}
+      {/* ── Цял екран ────────────────────────────────────────────────────
+
+          ═══ ЗАЩО НАДПИСИТЕ НЕ СЕ МЕНЯТ ═══
+
+          Копчето казваше „Покажи в Lookbook", а след натискане „✨ В
+          Lookbook" — по-къс надпис. Реда се преподреждаше под пръста и
+          съседните копчета скачаха на друго място. Смяна на дума под пръста
+          е най-бързият начин един интерфейс да изглежда любителски.
+
+          Сега надписът е един и същ винаги, а състоянието се вижда по ЦВЯТ.
+          Четирите копчета са в решетка от равни части: каквото и да се
+          случи вътре в тях, редът не мърда.
+
+          ═══ ЗАЩО „ЗАТВОРИ" НЕ Е ПЕТО КОПЧЕ ═══
+
+          То не е действие върху снимката, а изход от екрана. Смесено между
+          останалите, се натиска по погрешка вместо „Изтрий". Затова е
+          кръстче в ъгъла — там, където всеки го търси. */}
       {open && (
         <div
           role="dialog"
@@ -358,58 +538,71 @@ export default function GarderobPage() {
           <img
             src={open.url}
             alt=""
-            className="enter-pop m-auto max-h-[70dvh] max-w-full object-contain"
+            className="enter-pop m-auto max-h-[68dvh] max-w-full object-contain px-3"
           />
-          {/* ═══ ДЕЙСТВИЯТА СА ТУК, А НЕ САМО ЗАД ЗАДЪРЖАНЕ ═══
 
-              Изтриването се вършеше единствено с дълго задържане върху
-              плочката. Жестът е добър — не се случва случайно под палеца
-              при скролване — но е НЕВИДИМ: който не знае за него, няма как
-              да изтрие нищо. Затова остава като бърз път, а тук стои и
-              видимо копче. */}
+          <button
+            onClick={() => setOpen(null)}
+            aria-label="Затвори"
+            className="pressable absolute right-4 grid size-11 place-items-center rounded-full bg-paper/15 text-paper backdrop-blur-sm"
+            style={{ top: 'max(16px, calc(env(safe-area-inset-top) + 8px))' }}
+          >
+            <CrossIcon className="size-5" />
+          </button>
+
           <div
-            className="flex flex-wrap justify-center gap-2 px-4 pb-[max(24px,env(safe-area-inset-bottom))]"
+            className="grid grid-cols-4 gap-2 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-2"
             onClick={(event) => event.stopPropagation()}
           >
-            {me?.profile.wardrobePublic && (
-              <button
-                onClick={() => void togglePublished(open)}
-                className={cn(
-                  'pressable rounded-full px-5 py-3 text-[14px] font-semibold',
-                  open.published ? 'bg-lime text-ink' : 'bg-paper/15 text-paper',
-                )}
-              >
-                {open.published ? '✨ В Lookbook' : 'Покажи в Lookbook'}
-              </button>
-            )}
+            <SheetAction
+              label="Любима"
+              active={open.favorited}
+              activeClass="bg-danger text-white"
+              onClick={() => void toggleFavorite(open)}
+            >
+              <HeartIcon filled={open.favorited} />
+            </SheetAction>
 
-            <button
+            <SheetAction
+              label="Lookbook"
+              active={open.published}
+              activeClass="bg-lime text-ink"
+              disabled={!me?.profile.wardrobePublic}
+              onClick={() => void togglePublished(open)}
+            >
+              <Sparks className="h-4 w-6" />
+            </SheetAction>
+
+            <SheetAction
+              label="Категория"
               onClick={() => {
                 setPendingCategory(open);
                 setOpen(null);
               }}
-              className="pressable rounded-full bg-paper/15 px-5 py-3 text-[14px] font-semibold text-paper"
             >
-              Смени категорията
-            </button>
+              <RemixIcon />
+            </SheetAction>
 
-            <button
+            <SheetAction
+              label="Изтрий"
+              danger
               onClick={() => {
                 setPendingDelete(open);
                 setOpen(null);
               }}
-              className="pressable rounded-full bg-danger/85 px-5 py-3 text-[14px] font-semibold text-white"
             >
-              Изтрий
-            </button>
-
-            <button
-              onClick={() => setOpen(null)}
-              className="pressable rounded-full bg-paper/15 px-6 py-3 text-[14px] font-semibold text-paper"
-            >
-              Затвори
-            </button>
+              <TrashIcon />
+            </SheetAction>
           </div>
+
+          {!me?.profile.wardrobePublic && (
+            <p
+              className="px-6 pb-[max(20px,env(safe-area-inset-bottom))] text-center text-[12px] leading-snug text-white/45"
+              onClick={(event) => event.stopPropagation()}
+            >
+              За Lookbook гардеробът трябва да е публичен — от настройките.
+            </p>
+          )}
         </div>
       )}
 
