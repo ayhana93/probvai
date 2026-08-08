@@ -21,13 +21,23 @@ import sharp from 'sharp';
 import { dbSystem } from '@probvai/db';
 import { env } from './env';
 
-/** Купувал ли е този потребител кредити. */
+/**
+ * Купувал ли е този потребител кредити.
+ *
+ * Сумата, а не наличието на ред. Върнатото плащане също е ред с вид PURCHASE,
+ * само че с отрицателна стойност — сумата се връща на нула и водният знак се
+ * връща с нея. Без това човек, поискал парите си обратно, продължава да
+ * получава чисти снимки безплатно.
+ *
+ * Частично върнато плащане оставя сумата положителна и човекът остава чист.
+ * Това е нарочно: платил е за част, тя си е негова.
+ */
 export async function hasEverPurchased(userId: string): Promise<boolean> {
-  const purchase = await dbSystem().creditLedger.findFirst({
+  const purchased = await dbSystem().creditLedger.aggregate({
     where: { userId, reason: 'PURCHASE' },
-    select: { id: true },
+    _sum: { delta: true },
   });
-  return purchase !== null;
+  return (purchased._sum.delta ?? 0) > 0;
 }
 
 /** Трябва ли резултатът на този потребител да носи воден знак. */

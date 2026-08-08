@@ -39,7 +39,12 @@ const schema = z.object({
   // ── Кредити ──────────────────────────────────────────────────────────────
   CREDIT_PRICE_EUR: z.coerce.number().positive(),
   MIN_PURCHASE_CREDITS: z.coerce.number().int().positive().default(25),
-  MAX_PURCHASE_CREDITS: z.coerce.number().int().positive().default(1000),
+  // 200 наведнъж е таван нарочно: една открадната карта носи най-много €40,
+  // а спорът с банката за такава сума не изяжда акаунта ни в Stripe.
+  MAX_PURCHASE_CREDITS: z.coerce.number().int().positive().default(200),
+  // Колко похарчени евро отключват VIP Closet. Не е абонамент и не се
+  // купува направо — стига се, като се харчат кредити.
+  VIP_THRESHOLD_EUR: z.coerce.number().positive().default(200),
   FREE_CREDITS_SIGNUP: z.coerce.number().int().nonnegative().default(3),
   FREE_CREDITS_EMAIL_VERIFIED: z.coerce.number().int().nonnegative().default(1),
   FREE_CREDITS_PHONE_VERIFIED: z.coerce.number().int().nonnegative().default(1),

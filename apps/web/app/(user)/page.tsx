@@ -1,14 +1,20 @@
+'use client';
+
 import Link from 'next/link';
+import { Lookbook } from '@/components/lookbook';
 import { Logo } from '@/components/logo';
 import { Patch, PatchHeading } from '@/components/ui/patch';
 import { Sparks, Underscribble, Zigzag } from '@/components/ui/scribble';
 import { ArrowRightIcon } from '@/components/ui/icons';
+import { useMe } from '@/lib/use-me';
 
 /**
  * НАЧАЛО
  *
- * Наше съдържание, без чужди профили. Първото нещо на екрана е балансът —
- * той решава дали изобщо може да се пробва нещо.
+ * Първото нещо на екрана е балансът — той решава дали изобщо може да се
+ * пробва нещо. Отдолу е Lookbook: чужди визии, които показват какво може
+ * да се направи. Това е и причината човек да отвори приложението в ден,
+ * в който няма какво да пробва.
  */
 
 const SHOPS = [
@@ -27,7 +33,9 @@ const TIPS = [
 ];
 
 export default function HomePage() {
-  const credits = 12;
+  const { me, loading } = useMe();
+  const credits = me?.credits ?? 0;
+  const tier = me?.tier;
 
   return (
     <main className="px-5 pt-5">
@@ -39,21 +47,54 @@ export default function HomePage() {
       </div>
 
       {/* ── Балансът ────────────────────────────────────────────────────────
-          Заема целия ред. Преди до него стоеше фигура и двете се биеха за
-          вниманието; сега числото е единственото нещо тук. */}
+          Заема целия ред. Числото е единственото нещо тук. */}
       <section className="mt-4">
         <Patch material="leather" tilt={-1.5} className="px-5 py-4">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
             Твоят баланс
             <Sparks className="h-3 w-4 text-lime" />
           </div>
-          <div className="display mt-1 flex items-baseline gap-2 text-[38px] text-lime">
-            {credits}
-            <span className="text-[13px] font-semibold normal-case tracking-normal text-white/60">
-              проби
-            </span>
-          </div>
+
+          {loading ? (
+            <div className="skeleton mt-2 h-9 w-28 rounded-full" />
+          ) : (
+            <div className="display mt-1 flex items-baseline gap-2 text-[38px] text-lime">
+              {credits}
+              <span className="text-[13px] font-semibold normal-case tracking-normal text-white/60">
+                {credits === 1 ? 'проба' : 'проби'}
+              </span>
+            </div>
+          )}
           <Underscribble className="mt-0.5 h-2.5 w-24 text-lime/60" />
+
+          {/* ── Нивото ────────────────────────────────────────────────────
+              Стои тук, а не на отделен екран: постижение, което трябва да
+              се търси, не е постижение. */}
+          {tier && (
+            <div className="mt-4 border-t border-white/10 pt-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[13px] font-semibold text-white/85">
+                  {tier.vip ? '🔑 VIP Closet' : `${tier.emoji} ${tier.rank}`}
+                </span>
+                <span className="text-[11.5px] text-white/45">
+                  {tier.vip
+                    ? 'HD · значка · с предимство'
+                    : tier.next
+                      ? `още ${tier.toNext} до ${tier.next}`
+                      : `${tier.xp} точки`}
+                </span>
+              </div>
+
+              {!tier.vip && (
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/12">
+                  <div
+                    className="h-full rounded-full bg-lime transition-[width] duration-[var(--dur-sheet)] ease-[var(--ease-out)]"
+                    style={{ width: `${tier.progressPct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </Patch>
       </section>
 
@@ -65,6 +106,9 @@ export default function HomePage() {
         <span className="display text-[19px] text-ink">Нова проба</span>
         <ArrowRightIcon className="text-ink" />
       </Link>
+
+      {/* ── Lookbook ──────────────────────────────────────────────────────── */}
+      <Lookbook />
 
       {/* ── Магазините ────────────────────────────────────────────────────── */}
       <section className="mt-9">

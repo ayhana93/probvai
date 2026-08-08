@@ -20,9 +20,10 @@
  * отворени таба правят две снимки срещу един кредит.
  */
 
-import { dbSystem, type Prisma } from '@probvai/db';
+import { dbSystem, type GenSource, type Prisma } from '@probvai/db';
 import { spendCredit } from './credits';
 import { env } from './env';
+import { personGenderFor } from './person';
 import { checkAllBrakes, type BrakeReason } from './limits';
 import { activeProvider } from './providers';
 import { isAllowedAspectRatio, type AspectRatio } from './providers/types';
@@ -34,7 +35,13 @@ export type StartGenerationInput = {
   personKey: string;
   garmentKey: string;
   aspectRatio: AspectRatio;
+  /**
+   * Качена снимка или линк от магазин. Заради това поле името на магазина
+   * се показва в гардероба само когато го знаем наистина.
+   */
+  source?: GenSource;
   merchant?: string | null;
+  productUrl?: string | null;
 };
 
 export type StartGenerationFailure =
@@ -91,6 +98,12 @@ export async function startGeneration(
   // generations към едно и също нещо в рамките на една транзакция.
   const generationId = crypto.randomUUID();
 
+  const source: GenSource = input.source ?? 'UPLOAD';
+
+  // Полът се чете ПРЕДИ транзакцията. Вътре в нея не се правят заявки,
+  // които могат да чакат — редът на потребителя е заключен.
+  const personGender = await personGenderFor(userId);
+
   const spend = await spendCredit(userId, generationId, async (tx: Prisma.TransactionClient) => {
     await tx.generation.create({
       data: {
@@ -101,7 +114,12 @@ export async function startGeneration(
         personKey,
         garmentKey,
         aspectRatio: input.aspectRatio,
-        merchant: input.merchant ?? null,
+        source,
+        personGender,
+        // Име на магазин и адрес на продукт има само при линк. При качена
+        // снимка не знаем от къде е дрехата и не се преструваме, че знаем.
+        merchant: source === 'LINK' ? (input.merchant ?? null) : null,
+        productUrl: source === 'LINK' ? (input.productUrl ?? null) : null,
         // Себестойността се ЗАПАЗВА още сега. Глобалният таван брои поети
         // задължения, не само платени сметки. При провал се нулира.
         costUSD: provider.costUSD,
@@ -138,7 +156,7 @@ export async function startGeneration(
     );
   } catch (error) {
     // Задачата не влезе в опашката. Кредитът е удържан — връщаме го веднага,
-    // вместо да оставим потребителката да чака нещо, което няма да се случи.
+    // вместо да оставим потребителя да чака нещо, което няма да се случи.
     console.error('[generate] задачата не влезе в опашката:', error);
     await failGeneration(generationId, 'INTERNAL');
     return { ok: false, reason: 'INSUFFICIENT_CREDITS' };
@@ -157,7 +175,7 @@ export async function startGeneration(
  * Първо се връща кредитът, чак после статусът става FAILED.
  *
  * Обратният ред изглежда по-естествен, но е по-лош по две причини. Ако
- * процесът умре между двете стъпки, потребителката остава с генерация
+ * процесът умре между двете стъпки, потребителя остава с генерация
  * „провалена" и без върнат кредит — тоест губи пари заради наш срив. При
  * този ред най-лошото е генерация, заседнала в RUNNING с вече върнат кредит:
  * струва на нас, не на нея.

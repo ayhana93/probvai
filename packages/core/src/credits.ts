@@ -201,6 +201,75 @@ export async function addCredits(
 }
 
 // ---------------------------------------------------------------------------
+// Отнемане
+// ---------------------------------------------------------------------------
+
+/**
+ * Отнема кредити при върнато плащане (chargeback, refund от Stripe).
+ *
+ * ═══ ЗАЩО БАЛАНСЪТ НЕ ПАДА ПОД НУЛА ═══
+ *
+ * Ако човек купи 50 кредита, изхарчи 40 и поиска парите си обратно, ние вече
+ * сме платили на доставчика за 40 генерации. Отрицателният баланс не ги
+ * връща — само прави следващия вход неизползваем и ражда билет в поддръжката.
+ * Затова отнемаме колкото има; разликата е загуба и се вижда в леджера.
+ *
+ * Идемпотентна е по `refId` — второ webhook събитие за същото връщане не
+ * отнема втори път.
+ */
+export async function revokeCredits(
+  userId: string,
+  amount: number,
+  refId: string,
+): Promise<CreditResult> {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { ok: false, reason: 'INVALID_AMOUNT', balance: await getBalance(userId) };
+  }
+
+  try {
+    return await dbSystem().$transaction(async (tx) => {
+      const user = await lockUser(tx, userId);
+      if (!user) {
+        return { ok: false, reason: 'USER_NOT_FOUND', balance: 0 };
+      }
+
+      const already = await tx.creditLedger.findFirst({
+        where: { userId, reason: 'PURCHASE', refId },
+        select: { id: true },
+      });
+      if (already) {
+        return { ok: false, reason: 'ALREADY_REFUNDED', balance: user.credits };
+      }
+
+      const taken = Math.min(amount, user.credits);
+      const balance = user.credits - taken;
+
+      // Редът се пише дори когато `taken` е 0: одитната следа трябва да
+      // показва, че връщането е дошло и че е нямало какво да се отнеме.
+      const entry = await tx.creditLedger.create({
+        data: { userId, delta: -taken, reason: 'PURCHASE', refId, balance },
+        select: { id: true },
+      });
+
+      if (taken > 0) {
+        await tx.user.update({ where: { id: userId }, data: { credits: balance } });
+      }
+
+      return { ok: true, balance, ledgerId: entry.id };
+    }, TX_OPTIONS);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return {
+        ok: false,
+        reason: 'ALREADY_REFUNDED',
+        balance: await getBalance(userId),
+      };
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Връщане
 // ---------------------------------------------------------------------------
 

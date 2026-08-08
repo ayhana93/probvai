@@ -5,11 +5,31 @@ export type { Env } from './env';
 export {
   spendCredit,
   addCredits,
+  revokeCredits,
   refundCredit,
   getBalance,
   getLedgerSum,
 } from './credits';
 export type { CreditResult, CreditFailure } from './credits';
+
+// ── Плащания ───────────────────────────────────────────────────────────────
+export {
+  PURCHASE_STEP_CREDITS,
+  quoteCredits,
+  createCheckoutSession,
+  verifyWebhook,
+  handleStripeEvent,
+  stripeClient,
+  resetStripeClient,
+} from './payments';
+export type {
+  PriceQuote,
+  QuoteResult,
+  QuoteFailure,
+  CheckoutInput,
+  CheckoutResult,
+  WebhookOutcome,
+} from './payments';
 
 export {
   reconcileFreeCredits,
@@ -69,6 +89,9 @@ export type {
 export { sendEmail, alertAdmin } from './mail';
 export type { EmailMessage, SendResult } from './mail';
 
+export { purchaseEmail } from './emails';
+export type { PurchaseEmail } from './emails';
+
 export { sendSms } from './sms';
 export type { SmsResult } from './sms';
 
@@ -126,8 +149,69 @@ export type { ShareImageOptions } from './share';
 export { extractGarment } from './extract-garment';
 export type { ExtractResult, ExtractFailure } from './extract-garment';
 
-export { MERCHANTS, merchantFor, affiliateUrl } from './merchants';
+export { MERCHANTS, merchantFor, affiliateUrl, searchUrl } from './merchants';
 export type { Merchant, AffiliateNetwork } from './merchants';
+
+// ── Стил, профил, нива ─────────────────────────────────────────────────────
+export {
+  STYLE_CATEGORIES,
+  STYLE_INFO,
+  isStyleCategory,
+  categorize,
+  classifyByVision,
+} from './style';
+export type { StyleInfo, CategorizeInput } from './style';
+
+export {
+  GENDERS,
+  MIN_AGE,
+  MAX_AGE,
+  PUBLIC_WARDROBE_MIN_AGE,
+  isGender,
+  completeProfile,
+  ageFromBirthYear,
+  mayPublish,
+} from './profile';
+export type { ProfileInput, ProfileResult, ProfileFailure } from './profile';
+
+export { detectGenderByVision, personGenderFor } from './person';
+
+export {
+  RANKS,
+  VIP,
+  rankFor,
+  tierFrom,
+  tierFor,
+  awardXp,
+  recordSpend,
+  hasQueuePriority,
+  vipThresholdCents,
+} from './tier';
+export type { Rank, TierState } from './tier';
+
+// ── Lookbook ───────────────────────────────────────────────────────────────
+export {
+  PAGE_SIZE,
+  newSeed,
+  lookbookFeed,
+  setPublished,
+  toggleLike,
+  toggleSave,
+  savedLooks,
+  publicLookImageUrl,
+} from './lookbook';
+export type {
+  LookItem,
+  LookPage,
+  FeedOptions,
+  ToggleResult,
+  PublishResult,
+  PublishFailure,
+} from './lookbook';
+
+// ── Предложения за покупка ─────────────────────────────────────────────────
+export { blocksFor, waitCards } from './recommendations';
+export type { RecoBlock, RecoLink, RecoKind, RecoInput, WaitCard } from './recommendations';
 
 export {
   safeFetch,

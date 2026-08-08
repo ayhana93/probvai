@@ -137,7 +137,9 @@ describe('Успешен цикъл', () => {
       userId,
       ...keys,
       aspectRatio: '3:4',
+      source: 'LINK',
       merchant: 'Shein',
+      productUrl: 'https://bg.shein.com/lyatna-roklya-p-123.html',
     });
 
     expect(started.ok).toBe(true);
@@ -153,6 +155,7 @@ describe('Успешен цикъл', () => {
     });
     expect(queued.status).toBe('QUEUED');
     expect(queued.aspectRatio).toBe('3:4');
+    expect(queued.source).toBe('LINK');
     expect(queued.merchant).toBe('Shein');
     // Себестойността е запазена още при създаването.
     expect(Number(queued.costUSD)).toBeCloseTo(0.075, 4);
@@ -173,6 +176,69 @@ describe('Успешен цикъл', () => {
 
     // Балансът не мърда след започването.
     expect(await getBalance(userId)).toBe(2);
+  });
+
+  it('при КАЧЕНА снимка не записва магазин, дори да е подаден', async () => {
+    // Правилото от заданието: името на магазина се показва само когато
+    // дрехата е дошла през линк. При качена снимка нямаме откъде да знаем
+    // от кой магазин е — а измислено име е по-лошо от липсващо.
+    const userId = await makeUser(1);
+
+    const started = await startGeneration({
+      userId,
+      ...keysFor(userId),
+      aspectRatio: 'auto',
+      source: 'UPLOAD',
+      merchant: 'Shein',
+      productUrl: 'https://bg.shein.com/nesto.html',
+    });
+    if (!started.ok) throw new Error('не тръгна');
+
+    const queued = await system.generation.findUniqueOrThrow({
+      where: { id: started.generationId },
+    });
+
+    expect(queued.source).toBe('UPLOAD');
+    expect(queued.merchant).toBeNull();
+    expect(queued.productUrl).toBeNull();
+  });
+
+  it('дава категория и точка опит на готовата визия', async () => {
+    const userId = await makeUser(1);
+
+    const started = await startGeneration({
+      userId,
+      ...keysFor(userId),
+      aspectRatio: 'auto',
+      source: 'LINK',
+      merchant: 'Shein',
+      productUrl: 'https://bg.shein.com/women/dresses/summer-linen-dress-1.html',
+    });
+    if (!started.ok) throw new Error('не тръгна');
+
+    await runGenerationJob({ generationId: started.generationId });
+
+    const done = await system.generation.findUniqueOrThrow({
+      where: { id: started.generationId },
+    });
+    expect(done.category).toBe('SUMMER');
+
+    const user = await system.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.xp).toBe(1);
+  });
+
+  it('провалена генерация НЕ дава точка опит', async () => {
+    // Иначе нивата растат от нашите грешки.
+    const userId = await makeUser(2);
+    behaviour = 'fail';
+
+    const started = await startGeneration({ userId, ...keysFor(userId), aspectRatio: 'auto' });
+    if (!started.ok) throw new Error('не тръгна');
+
+    await runGenerationJob({ generationId: started.generationId });
+
+    const user = await system.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.xp).toBe(0);
   });
 
   it('слага воден знак на потребител, който не е купувал', async () => {

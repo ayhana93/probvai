@@ -1,4 +1,5 @@
 import { BottomNav } from '@/components/bottom-nav';
+import { ProfileGate } from '@/components/profile-gate';
 
 /**
  * Обвивката на потребителското приложение.
@@ -12,6 +13,7 @@ import { BottomNav } from '@/components/bottom-nav';
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[430px] pb-[124px]">
+      <ProfileGate />
       {children}
       <BottomNav />
     </div>

@@ -5,15 +5,25 @@
  * Един източник — двата отговора не могат да се разминат.
  */
 
-import { getSignedUrl } from '@probvai/core';
-import { dbAsUser } from '@probvai/db';
+import {
+  blocksFor,
+  getSignedUrl,
+  waitCards,
+  type RecoBlock,
+  type WaitCard,
+} from '@probvai/core';
+import { dbAsUser, type Gender, type GenSource, type StyleCategory } from '@probvai/db';
 
 export type GenerationView = {
   id: string;
   status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'REFUNDED';
   aspectRatio: string;
   watermarked: boolean;
+  /** Качена снимка или линк от магазин. */
+  source: GenSource;
+  /** Име на магазин има САМО при линк — иначе не знаем от къде е дрехата. */
   merchant: string | null;
+  category: StyleCategory | null;
   errorCode: string | null;
   createdAt: string;
   /** Секунди от създаването — интерфейсът показва брояча. */
@@ -21,6 +31,14 @@ export type GenerationView = {
   /** Подписан адрес към резултата. Само когато е готов. */
   resultUrl: string | null;
   personUrl: string | null;
+  /** Свалена ли е вече в галерията на телефона. */
+  saved: boolean;
+  /** Публикувана ли е в Lookbook. */
+  published: boolean;
+  /** Партньорските блокове под готовата визия. */
+  recommendations: RecoBlock[];
+  /** С какво се пълни екранът за чакане. */
+  waiting: WaitCard[];
 };
 
 /**
@@ -38,7 +56,13 @@ export async function loadGenerationView(
       status: true,
       aspectRatio: true,
       watermarked: true,
+      source: true,
       merchant: true,
+      productUrl: true,
+      category: true,
+      personGender: true,
+      savedAt: true,
+      publishedAt: true,
       errorCode: true,
       resultKey: true,
       personKey: true,
@@ -53,12 +77,23 @@ export async function loadGenerationView(
     generation.personKey ? getSignedUrl(generation.personKey) : Promise.resolve(null),
   ]);
 
+  const reco = {
+    category: generation.category,
+    gender: generation.personGender as Gender | null,
+    productUrl: generation.productUrl,
+    merchant: generation.merchant,
+  };
+
   return {
     id: generation.id,
     status: generation.status,
     aspectRatio: generation.aspectRatio,
     watermarked: generation.watermarked,
-    merchant: generation.merchant,
+    source: generation.source,
+    // Двойна проверка: полето и без това се пълни само при линк, но
+    // правилото „магазин само при линк" се вижда и тук, на изхода.
+    merchant: generation.source === 'LINK' ? generation.merchant : null,
+    category: generation.category,
     errorCode: generation.errorCode,
     createdAt: generation.createdAt.toISOString(),
     elapsedSeconds: Math.max(
@@ -67,6 +102,12 @@ export async function loadGenerationView(
     ),
     resultUrl,
     personUrl,
+    saved: generation.savedAt !== null,
+    published: generation.publishedAt !== null,
+    // Предложенията се смятат само за готова визия — под чакащ екран няма
+    // какво да се купува към нея.
+    recommendations: generation.status === 'DONE' ? blocksFor(reco) : [],
+    waiting: generation.status === 'DONE' ? [] : waitCards(reco),
   };
 }
 

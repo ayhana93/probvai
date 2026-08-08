@@ -18,6 +18,8 @@ import { env } from '../env';
 import { safeFetch } from '../net-guard';
 import { providerByName, ProviderError, type ProviderName } from '../providers';
 import { buildKey, getSignedUrl, putObject } from '../storage';
+import { categorize } from '../style';
+import { awardXp } from '../tier';
 import { applyWatermark, shouldWatermark } from '../watermark';
 
 const POLL_INTERVAL_MS = 2_000;
@@ -82,6 +84,10 @@ export async function runGenerationJob(job: GenerateJob): Promise<void> {
       personKey: true,
       garmentKey: true,
       aspectRatio: true,
+      merchant: true,
+      productUrl: true,
+      category: true,
+      categoryLocked: true,
     },
   });
 
@@ -164,15 +170,31 @@ export async function runGenerationJob(job: GenerateJob): Promise<void> {
     const resultKey = buildKey(generation.userId, 'result', 'jpg');
     await putObject(resultKey, finalImage, 'image/jpeg');
 
+    // ── 4. Категория ─────────────────────────────────────────────────────
+    // Слага се тук, а не при заявката: чак сега знаем, че визията е готова
+    // и има какво да се подрежда. Ако човекът вече я е сменил ръчно
+    // (`categoryLocked`), не я пипаме — неговият избор бие нашия.
+    const category = generation.categoryLocked
+      ? generation.category
+      : categorize({
+          title: generation.merchant,
+          productUrl: generation.productUrl,
+        });
+
     await system.generation.update({
       where: { id: generationId },
       data: {
         status: 'DONE',
         resultKey,
         watermarked,
+        category,
         completedAt: new Date(),
       },
     });
+
+    // Точката се дава за ГОТОВА визия. Провалената връща кредита и не бива
+    // да качва нивото — иначе нивата растат от нашите грешки.
+    await awardXp(generation.userId);
 
     const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
     console.info(

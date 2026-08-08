@@ -45,6 +45,39 @@ enum GenStatus {
   REFUNDED
 }
 
+// Полът се пита при регистрация и служи за две неща: приложението да говори
+// правилно и предложенията за покупка да са за правилния човек. `OTHER` е
+// задължително — списък от два реда изключва хора без причина.
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// От къде е дошла дрехата. Заради това поле името на магазина се показва
+// в гардероба само когато го знаем наистина — при качена снимка нямаме
+// откъде да знаем от кой магазин е дрехата.
+enum GenSource {
+  UPLOAD
+  LINK
+}
+
+// Стиловите категории. Всяка визия се нарежда автоматично в една от тях —
+// така Lookbook-ът се пълни без ръчна работа. Човекът може да я смени.
+enum StyleCategory {
+  BUSINESS
+  STREETWEAR
+  LUXURY
+  SUMMER
+  ELEGANT
+  CUTE
+  GYM
+  WEDDING
+  PARTY
+  CASUAL
+  DATE
+}
+
 enum TicketStatus {
   OPEN
   ANSWERED
@@ -74,6 +107,34 @@ model User {
   phone           String?   @unique
   phoneVerifiedAt DateTime? @map("phone_verified_at")
 
+  // ── Профил ───────────────────────────────────────────────────────────────
+  // Питат се при регистрация. Полето `name` остава за Auth.js — то идва от
+  // Google/Apple и не е разделено на две.
+  firstName String? @map("first_name")
+  lastName  String? @map("last_name")
+  gender    Gender?
+
+  // Пази се ГОДИНАТА на раждане, не възрастта. Възраст, записана веднъж,
+  // остава невярна завинаги; годината е вярна винаги. Формата пита за
+  // възраст, защото така мисли човекът — превръщането е наша работа.
+  birthYear Int? @map("birth_year")
+
+  // Публичен гардероб значи, че визиите му МОГАТ да се публикуват в Lookbook.
+  // По подразбиране НЕ. Публикуването на снимка с лице е решение, което се
+  // взима нарочно, не се получава по невнимание.
+  wardrobePublic Boolean @default(false) @map("wardrobe_public")
+
+  // Докато е празно, показваме екрана за довършване на профила.
+  profileCompletedAt DateTime? @map("profile_completed_at")
+
+  // ── Напредък ─────────────────────────────────────────────────────────────
+  // Точки опит: по една на изхарчен кредит. Пипат се само от core/tier.ts.
+  xp Int @default(0)
+
+  // Похарчено за кредити, в евроцентове. Цяло число нарочно — пари в
+  // плаваща запетая се сумират до 199.99999 и прагът не се стига никога.
+  lifetimeSpendCents Int @default(0) @map("lifetime_spend_cents")
+
   // Кеш на баланса. Пипа се САМО от packages/core/src/credits.ts.
   credits Int @default(0)
 
@@ -85,7 +146,7 @@ model User {
 
   status UserStatus @default(ACTIVE)
 
-  // Ключ в R2 към снимката по подразбиране на потребителката.
+  // Ключ в R2 към снимката по подразбиране на потребителя.
   defaultPhotoKey String? @map("default_photo_key")
 
   // Нулира се при всяко влизане и при покупка. Брои 90-те дни неактивност.
@@ -103,6 +164,8 @@ model User {
   generations        Generation[]
   tickets            SupportTicket[]
   phoneVerifications PhoneVerification[]
+  likes              LookLike[]
+  saves              LookSave[]
 
   @@index([lastActiveAt])
   @@index([status])
@@ -228,7 +291,7 @@ model Generation {
   garmentKey String  @map("garment_key")
   resultKey  String? @map("result_key")
 
-  // Съотношение на кадъра — единствената настройка, достъпна за потребителката.
+  // Съотношение на кадъра — единствената настройка, достъпна за потребителя.
   aspectRatio String @default("auto") @map("aspect_ratio")
 
   // Безплатните генерации носят воден знак.
@@ -237,8 +300,35 @@ model Generation {
   // Себестойност в USD. Сумата за деня се сравнява с MAX_DAILY_SPEND_USD.
   costUSD Decimal? @map("cost_usd") @db.Decimal(10, 4)
 
-  // От кой магазин е дрехата, ако е дошла през линк.
+  // Качена снимка или линк към магазин.
+  source GenSource @default(UPLOAD)
+
+  // От кой магазин е дрехата. Има стойност САМО при `source = LINK` —
+  // при качена снимка нямаме откъде да знаем от кой магазин е дрехата,
+  // а измисленото име е по-лошо от липсващото.
   merchant String?
+
+  // Адресът на продукта. Пази се, за да работи „Купи тази дреха" и по-късно.
+  productUrl String? @map("product_url")
+
+  // ── Стил ─────────────────────────────────────────────────────────────────
+  // Слага се автоматично след успешна генерация. Човекът може да я смени;
+  // тогава `categoryLocked` спира автоматиката да я върне обратно.
+  category       StyleCategory?
+  categoryLocked Boolean        @default(false) @map("category_locked")
+
+  // Разпознат пол по снимката. Служи само за насочване на предложенията.
+  personGender Gender? @map("person_gender")
+
+  // ── Гардероб и Lookbook ──────────────────────────────────────────────────
+  // Кога е свалена в галерията на телефона.
+  savedAt DateTime? @map("saved_at")
+
+  // Кога е публикувана в Lookbook. NULL значи „само моя".
+  publishedAt DateTime? @map("published_at")
+
+  // Кеш на броя харесвания. Истината е COUNT(look_likes) — има тест.
+  likeCount Int @default(0) @map("like_count")
 
   errorCode String? @map("error_code")
 
@@ -246,13 +336,56 @@ model Generation {
   startedAt   DateTime? @map("started_at")
   completedAt DateTime? @map("completed_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes LookLike[]
+  saves LookSave[]
 
   @@index([userId, createdAt])
   // Индексът за глобалния дневен таван — най-горещата заявка в системата.
   @@index([createdAt, status])
   @@index([status])
+  // Lookbook: публикуваните, по категории.
+  @@index([publishedAt, category])
   @@map("generations")
+}
+
+// ---------------------------------------------------------------------------
+// Lookbook
+// ---------------------------------------------------------------------------
+//
+// Публична галерия и нищо повече. Няма профили, няма последователи, няма
+// чат и няма коментари. Затова тук няма таблица за коментари и няма таблица
+// за връзки между хора — двете неща, които превръщат галерията в социална
+// мрежа и носят със себе си модерация, доклади и тормоз.
+
+// Едно харесване на човек на визия. Съставният ключ го налага — не се
+// разчита на кода да проверява преди да пише.
+model LookLike {
+  userId       String   @map("user_id")
+  generationId String   @map("generation_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generation Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, generationId])
+  @@index([generationId])
+  @@map("look_likes")
+}
+
+// „Запази" — чужда визия, сложена настрани за после. Не е копие на снимката,
+// само отметка.
+model LookSave {
+  userId       String   @map("user_id")
+  generationId String   @map("generation_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generation Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, generationId])
+  @@index([userId, createdAt])
+  @@map("look_saves")
 }
 
 // ---------------------------------------------------------------------------

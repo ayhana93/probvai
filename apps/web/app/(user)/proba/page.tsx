@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useMe } from '@/lib/use-me';
 import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
@@ -62,7 +63,18 @@ function StepBadge({ n, done }: { n: number; done?: boolean }) {
 }
 
 export default function ProbaPage() {
+  return (
+    <React.Suspense fallback={<main className="px-5 pt-6"><div className="skeleton h-40 rounded-[var(--radius-card)]" /></main>}>
+      <Proba />
+    </React.Suspense>
+  );
+}
+
+function Proba() {
   const router = useRouter();
+  const params = useSearchParams();
+  const { me } = useMe();
+
   // Качването е по подразбиране. Повечето хора вече имат снимката в
   // телефона си; линкът е за тези, които още разглеждат магазина.
   const [tab, setTab] = React.useState<'upload' | 'link'>('upload');
@@ -72,11 +84,40 @@ export default function ProbaPage() {
   const [link, setLink] = React.useState('');
   const [garment, setGarment] = React.useState(false);
 
-  // Идва от сесията, щом екраните се вържат за API-тата.
-  const credits: number = 12;
+  /**
+   * „Пробвай този аутфит" от Lookbook.
+   *
+   * Дрехата се копира в собствения префикс на човека още при отварянето на
+   * екрана — така, когато натисне „Генерирай", няма второ чакане. Копието е
+   * евтино; чакането не е.
+   */
+  const inspiration = params.get('vdahnovenie');
+  const [borrowedKey, setBorrowedKey] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!inspiration) return;
+    let alive = true;
+
+    void fetch(`/api/lookbook/${inspiration}/try`, { method: 'POST' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { garmentKey: string } | null) => {
+        if (alive && data) {
+          setBorrowedKey(data.garmentKey);
+          setGarment(true);
+          setTab('upload');
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      alive = false;
+    };
+  }, [inspiration]);
+
+  const credits = me?.credits ?? 0;
   const [starting, setStarting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const hasPhoto = true;
+  const hasPhoto = me?.hasDefaultPhoto ?? false;
   const ready = hasPhoto && (tab === 'link' ? link.trim().length > 0 : garment);
 
   /**
@@ -97,8 +138,14 @@ export default function ProbaPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           personKey: 'PLACEHOLDER',
-          garmentKey: 'PLACEHOLDER',
+          garmentKey: borrowedKey ?? 'PLACEHOLDER',
           aspectRatio: ratio,
+          // Линкът е единственият случай, в който знаем от кой магазин е
+          // дрехата. При качена снимка не пращаме магазин — и после в
+          // гардероба не пише име, вместо да пише измислено.
+          ...(tab === 'link'
+            ? { source: 'LINK', productUrl: link.trim() }
+            : { source: 'UPLOAD' }),
         }),
       });
 
@@ -125,6 +172,14 @@ export default function ProbaPage() {
         <h1 className="display text-[28px]">Нова проба</h1>
         <Sparks className="mb-2 h-3.5 w-6 text-violet" />
       </div>
+
+      {inspiration && (
+        <p className="enter-rise mt-3 rounded-[var(--radius-card)] bg-violet-wash px-4 py-3 text-[13.5px] leading-snug text-ink-70">
+          {borrowedKey
+            ? 'Дрехата от избраната визия е готова. Остава да натиснеш.'
+            : 'Взимаме дрехата от избраната визия...'}
+        </p>
+      )}
 
       {/* ── Стъпка 1 ────────────────────────────────────────────────────── */}
       <section className="mt-6">

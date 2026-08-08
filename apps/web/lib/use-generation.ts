@@ -16,18 +16,40 @@ import * as React from 'react';
 
 export type GenerationStatus = 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED' | 'REFUNDED';
 
+export type WaitCardView = {
+  id: string;
+  tag: string;
+  title: string;
+  body: string;
+  url?: string;
+  merchant?: string;
+};
+
+export type RecoBlockView = {
+  kind: string;
+  title: string;
+  emoji: string;
+  links: { merchant: string; url: string }[];
+};
+
 export type GenerationView = {
   id: string;
   status: GenerationStatus;
   aspectRatio: string;
   watermarked: boolean;
+  source: 'UPLOAD' | 'LINK';
   merchant: string | null;
+  category: string | null;
   errorCode: string | null;
   errorMessage?: string | null;
   createdAt: string;
   elapsedSeconds: number;
   resultUrl: string | null;
   personUrl: string | null;
+  saved: boolean;
+  published: boolean;
+  recommendations: RecoBlockView[];
+  waiting: WaitCardView[];
 };
 
 const POLL_MS = 5_000;

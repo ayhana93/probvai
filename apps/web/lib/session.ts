@@ -42,7 +42,7 @@ export async function requireUser(): Promise<Authorized | Unauthorized> {
 /**
  * Единен вид на грешките: код за кода и съобщение за човека.
  * Съобщението се показва както е, затова е на български и казва какво
- * да направи потребителката, а не какво се е счупило.
+ * да направи потребителя, а не какво се е счупило.
  */
 export function jsonError(status: number, code: string, message: string): Response {
   return Response.json({ error: { code, message } }, { status });

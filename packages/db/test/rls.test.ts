@@ -150,6 +150,75 @@ describe('RLS — системните таблици са недостъпни 
   });
 });
 
+describe('RLS — Lookbook и профил', () => {
+  it('app_user не може да си вдигне точките опит', async () => {
+    // XP и похарченото водят до VIP Closet. Ако приложението можеше да ги
+    // пише, всеки щеше да си отключи статуса с една заявка.
+    await expect(
+      dbAsUser(userA).user.update({ where: { id: userA }, data: { xp: 9999 } }),
+    ).rejects.toThrow();
+
+    await expect(
+      dbAsUser(userA).user.update({
+        where: { id: userA },
+        data: { lifetimeSpendCents: 999_999 },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('но може да си попълни профила и да смени видимостта на гардероба', async () => {
+    const updated = await dbAsUser(userA).user.update({
+      where: { id: userA },
+      data: { firstName: 'Ана', lastName: 'Петрова', wardrobePublic: true },
+    });
+    expect(updated.firstName).toBe('Ана');
+    expect(updated.wardrobePublic).toBe(true);
+  });
+
+  it('app_user не може да си вдигне харесванията', async () => {
+    // Броячът е чужд резултат. Ако беше писаем от приложението, числото
+    // под визиите нямаше да значи нищо.
+    const mine = await dbAsUser(userA).generation.findFirstOrThrow();
+
+    await expect(
+      dbAsUser(userA).generation.update({
+        where: { id: mine.id },
+        data: { likeCount: 5000 },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('но може да си смени категорията и да публикува', async () => {
+    const mine = await dbAsUser(userA).generation.findFirstOrThrow();
+
+    const updated = await dbAsUser(userA).generation.update({
+      where: { id: mine.id },
+      data: { category: 'PARTY', categoryLocked: true, savedAt: new Date() },
+    });
+    expect(updated.category).toBe('PARTY');
+  });
+
+  it('чуждо харесване не се вижда и не се пише', async () => {
+    const lookOfB = await system.generation.findFirstOrThrow({
+      where: { userId: userB },
+    });
+
+    await system.lookLike.create({ data: { userId: userB, generationId: lookOfB.id } });
+
+    // A не вижда чуждото харесване...
+    expect(await dbAsUser(userA).lookLike.findMany()).toHaveLength(0);
+
+    // ...и не може да сложи харесване от името на B.
+    await expect(
+      dbAsUser(userA).lookLike.create({
+        data: { userId: userB, generationId: lookOfB.id },
+      }),
+    ).rejects.toThrow();
+
+    await system.lookLike.deleteMany({ where: { userId: userB } });
+  });
+});
+
 describe('RLS — отказът по подразбиране', () => {
   it('без зададен потребител базата не връща нито един ред', async () => {
     // Симулира пропуснат `set_config` — заявка направо по app_user връзката.

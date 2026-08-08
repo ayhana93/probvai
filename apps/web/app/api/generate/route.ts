@@ -10,10 +10,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Съобщенията към потребителката.
+ * Съобщенията към потребителя.
  *
  * ⚠ При достигнат ГЛОБАЛЕН таван НЕ казваме „свършиха ни парите". Казваме,
- * че сме претоварени. Точната причина е наша работа, не нейна.
+ * че сме претоварени. Точната причина е наша работа, не негова.
  */
 const MESSAGES: Record<StartGenerationFailure, { status: number; text: string }> = {
   BAD_ASPECT_RATIO: { status: 400, text: 'Това съотношение не се поддържа.' },
@@ -40,7 +40,9 @@ type Body = {
   personKey?: unknown;
   garmentKey?: unknown;
   aspectRatio?: unknown;
+  source?: unknown;
   merchant?: unknown;
+  productUrl?: unknown;
 };
 
 /**
@@ -70,12 +72,18 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(400, 'BAD_ASPECT_RATIO', MESSAGES.BAD_ASPECT_RATIO.text);
   }
 
+  // Само „LINK" се приема като линк. Всичко останало е качена снимка —
+  // и тогава името на магазина не се записва, защото не го знаем.
+  const source = body.source === 'LINK' ? 'LINK' : 'UPLOAD';
+
   const result = await startGeneration({
     userId: session.user.id,
     personKey: body.personKey,
     garmentKey: body.garmentKey,
     aspectRatio,
+    source,
     merchant: typeof body.merchant === 'string' ? body.merchant : null,
+    productUrl: typeof body.productUrl === 'string' ? body.productUrl : null,
   });
 
   if (!result.ok) {

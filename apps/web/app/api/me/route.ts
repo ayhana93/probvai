@@ -1,3 +1,4 @@
+import { ageFromBirthYear, tierFrom } from '@probvai/core';
 import { dbAsUser } from '@probvai/db';
 import { requireUser } from '@/lib/session';
 
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/me — профилът на влезлия потребител.
  *
  * Чете през `dbAsUser`, а не през системната връзка. Разликата е, че тук
- * базата, а не кодът, гарантира че се връщат само нейните редове.
+ * базата, а не кодът, гарантира че се връщат само неговите редове.
  */
 export async function GET(): Promise<Response> {
   const session = await requireUser();
@@ -27,6 +28,14 @@ export async function GET(): Promise<Response> {
       phoneVerifiedAt: true,
       defaultPhotoKey: true,
       createdAt: true,
+      firstName: true,
+      lastName: true,
+      gender: true,
+      birthYear: true,
+      wardrobePublic: true,
+      profileCompletedAt: true,
+      xp: true,
+      lifetimeSpendCents: true,
     },
   });
 
@@ -40,6 +49,8 @@ export async function GET(): Promise<Response> {
     select: { delta: true, reason: true, balance: true, createdAt: true },
   });
 
+  const tier = tierFrom(me.xp, me.lifetimeSpendCents);
+
   return Response.json(
     {
       id: me.id,
@@ -51,6 +62,29 @@ export async function GET(): Promise<Response> {
       hasDefaultPhoto: Boolean(me.defaultPhotoKey),
       memberSince: me.createdAt.toISOString(),
       ledger: recentLedger,
+
+      profile: {
+        firstName: me.firstName,
+        lastName: me.lastName,
+        gender: me.gender,
+        age: ageFromBirthYear(me.birthYear),
+        wardrobePublic: me.wardrobePublic,
+        // Докато е `false`, интерфейсът показва екрана за довършване.
+        completed: me.profileCompletedAt !== null,
+      },
+
+      tier: {
+        xp: tier.xp,
+        rank: tier.rank.title,
+        rankNote: tier.rank.note,
+        emoji: tier.rank.emoji,
+        next: tier.next?.title ?? null,
+        toNext: tier.toNext,
+        progressPct: tier.progressPct,
+        vip: tier.vip,
+        spentEur: tier.spentEur,
+        toVipEur: tier.toVipEur,
+      },
     },
     { headers: { 'cache-control': 'no-store' } },
   );

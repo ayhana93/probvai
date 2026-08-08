@@ -4,10 +4,13 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ResultView } from '@/components/result-view';
+import { WaitCards } from '@/components/wait-cards';
 import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
 import { Sparks } from '@/components/ui/scribble';
 import { useGeneration } from '@/lib/use-generation';
+import { useMe } from '@/lib/use-me';
+import { isStyleKey } from '@/lib/styles';
 
 /**
  * ЕДНА ПРОБА: от чакане до резултат
@@ -49,16 +52,21 @@ export default function ProbaResultPage() {
   const id = params.id;
 
   const { view, elapsed, timedOut, done } = useGeneration(id);
+  const { me } = useMe();
 
   // ── Готово ──────────────────────────────────────────────────────────────
-  if (view?.status === 'DONE' && view.resultUrl && view.personUrl) {
+  if (view?.status === 'DONE' && view.resultUrl) {
     return (
       <ResultView
         generationId={id}
-        personUrl={view.personUrl}
         resultUrl={view.resultUrl}
         watermarked={view.watermarked}
         merchant={view.merchant}
+        category={isStyleKey(view.category) ? view.category : null}
+        saved={view.saved}
+        published={view.published}
+        canPublish={me?.profile.wardrobePublic ?? false}
+        recommendations={view.recommendations}
         onRetry={() => router.push('/proba')}
       />
     );
@@ -118,6 +126,8 @@ export default function ProbaResultPage() {
       <p className="mt-4 text-[13px] leading-snug text-ink-25">
         Може да излезеш от този екран. Пробата ще те чака в гардероба.
       </p>
+
+      <WaitCards cards={view?.waiting ?? []} />
     </main>
   );
 }

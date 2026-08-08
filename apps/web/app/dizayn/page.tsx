@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { BottomNav } from '@/components/bottom-nav';
-import { BeforeAfter } from '@/components/ui/before-after';
 import { Button, IconButton } from '@/components/ui/button';
+import { LookFrame } from '@/components/ui/look-frame';
 import { Patch, PatchHeading, type Material } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
 import { Tabs } from '@/components/ui/tabs';
@@ -100,21 +100,16 @@ export default function DizaynPage() {
         </p>
       </Row>
 
-      <Row title="Преди и след">
-        <BeforeAfter
-          beforeSrc="/demo/predi.jpg"
-          afterSrc="/demo/sled.jpg"
-          className="aspect-[3/4] w-full"
-        />
+      <Row title="Рамката на визията">
+        <LookFrame src="/demo/sled.jpg" badge="🌴 Лято" note="Shein" />
         <p className="mt-3 text-[12.5px] leading-snug text-ink-45">
-          Отдолу има прозрачен нативен плъзгач. Той носи наготово стрелките
-          на клавиатурата, четенето от екранен четец и правилното влачене,
-          когато пръстът излезе от елемента. Видимото е наше, поведението е
-          на системата.
+          Готовата снимка не се показва гола. Парче материал отдолу, снимката
+          залепена отгоре леко накриво, дебел тъмен кант — същият език, с
+          който е сглобено логото.
         </p>
         <p className="mt-2 text-[12.5px] leading-snug text-ink-45">
-          Реже се с clip-path, не с широчина: широчината кара браузъра да
-          преизчислява разположението при всеки кадър.
+          Появата е `scale(0.92) → 1` за 320 мс. Достатъчно, за да се усети
+          като награда; недостатъчно, за да се чака.
         </p>
       </Row>
 

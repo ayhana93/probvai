@@ -17,15 +17,54 @@ export type Merchant = {
   domain: string;
   name: string;
   network: AffiliateNetwork | null;
+  /**
+   * Адрес за търсене в магазина. `{q}` се заменя с думите за търсене.
+   *
+   * ⚠ ПРОВЕРИ ВСЕКИ ЕДИН ПРЕДИ ПУСКАНЕ. Магазините сменят адресите си без
+   * предупреждение, а счупена връзка от препоръка е по-лоша от липсваща.
+   * Оставиш ли полето празно, магазинът просто не участва в препоръките —
+   * нищо не се чупи.
+   */
+  search?: string;
 };
 
 export const MERCHANTS: Merchant[] = [
-  { domain: 'shein.com', name: 'Shein', network: 'admitad' },
-  { domain: 'vinted.bg', name: 'Vinted', network: null },
-  { domain: 'about-you.bg', name: 'About You', network: 'awin' },
-  { domain: 'answear.bg', name: 'Answear', network: 'admitad' },
-  { domain: 'zalando.bg', name: 'Zalando', network: 'awin' },
-  { domain: 'emag.bg', name: 'eMAG', network: 'profitshare' },
+  {
+    domain: 'shein.com',
+    name: 'Shein',
+    network: 'admitad',
+    search: 'https://bg.shein.com/pdsearch/{q}/',
+  },
+  {
+    domain: 'vinted.bg',
+    name: 'Vinted',
+    network: null,
+    search: 'https://www.vinted.bg/catalog?search_text={q}',
+  },
+  {
+    domain: 'about-you.bg',
+    name: 'About You',
+    network: 'awin',
+    search: 'https://www.about-you.bg/search?term={q}',
+  },
+  {
+    domain: 'answear.bg',
+    name: 'Answear',
+    network: 'admitad',
+    search: 'https://answear.bg/search?query={q}',
+  },
+  {
+    domain: 'zalando.bg',
+    name: 'Zalando',
+    network: 'awin',
+    search: 'https://www.zalando.bg/catalog/?q={q}',
+  },
+  {
+    domain: 'emag.bg',
+    name: 'eMAG',
+    network: 'profitshare',
+    search: 'https://www.emag.bg/search/{q}',
+  },
 ];
 
 /**
@@ -75,4 +114,15 @@ export function affiliateUrl(productUrl: string, merchant: Merchant | null): str
   if (!template || !template.includes('{url}')) return productUrl;
 
   return template.replace('{url}', encodeURIComponent(productUrl));
+}
+
+/**
+ * Адрес за търсене в магазина, вече през партньорската мрежа.
+ * Връща `null`, ако магазинът няма проверен адрес за търсене — по-добре без
+ * връзка, отколкото със счупена.
+ */
+export function searchUrl(merchant: Merchant, query: string): string | null {
+  if (!merchant.search) return null;
+  const target = merchant.search.replace('{q}', encodeURIComponent(query));
+  return affiliateUrl(target, merchant);
 }

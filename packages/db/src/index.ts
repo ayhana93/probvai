@@ -18,6 +18,9 @@ export {
   GenStatus,
   TicketStatus,
   MessageAuthor,
+  Gender,
+  GenSource,
+  StyleCategory,
 } from './generated/prisma';
 
 export type {
@@ -33,4 +36,6 @@ export type {
   AdminAuditLog,
   SupportTicket,
   SupportMessage,
+  LookLike,
+  LookSave,
 } from './generated/prisma';
