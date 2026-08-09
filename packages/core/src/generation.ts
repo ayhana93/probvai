@@ -35,6 +35,8 @@ export type StartGenerationInput = {
   personKey: string;
   garmentKey: string;
   aspectRatio: AspectRatio;
+  /** Какво е поискал човекът с думи. По избор. */
+  prompt?: string | null;
   /**
    * Качена снимка или линк от магазин. Заради това поле името на магазина
    * се показва в гардероба само когато го знаем наистина.
@@ -114,6 +116,7 @@ export async function startGeneration(
         personKey,
         garmentKey,
         aspectRatio: input.aspectRatio,
+        prompt: input.prompt ?? null,
         source,
         personGender,
         // Име на магазин и адрес на продукт има само при линк. При качена

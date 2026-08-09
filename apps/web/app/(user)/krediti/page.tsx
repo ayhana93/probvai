@@ -45,7 +45,7 @@ export default function KreditiPage() {
 function Skeleton() {
   return (
     <main className="px-5 pt-6">
-      <h1 className="display text-[28px]">Зареди кредити</h1>
+      <h1 className="display text-[28px]">Зареди проби</h1>
       <div className="skeleton mt-6 h-[236px] rounded-[var(--radius-card)]" />
       <div className="skeleton mt-5 h-14 rounded-full" />
     </main>
@@ -103,9 +103,9 @@ function Kupuvane() {
 
   return (
     <main className="px-5 pt-6">
-      <h1 className="display text-[28px]">Зареди кредити</h1>
+      <h1 className="display text-[28px]">Зареди проби</h1>
       <p className="mt-2 text-[14px] leading-snug text-ink-45">
-        Един кредит е една проба. Не изтичат.
+        Една проба е едно генериране. Не изтичат.
       </p>
 
       {cancelled && (
@@ -118,7 +118,7 @@ function Kupuvane() {
         <div className="flex items-center justify-between">
           <div>
             <div className="display text-[46px] leading-none text-lime">{credits}</div>
-            <div className="mt-1 text-[13px] font-semibold text-white/55">кредита</div>
+            <div className="mt-1 text-[13px] font-semibold text-white/55">проби</div>
             <Underscribble className="mt-1 h-2.5 w-20 text-lime/50" />
           </div>
 
@@ -131,7 +131,7 @@ function Kupuvane() {
         </div>
 
         <label className="mt-7 block">
-          <span className="sr-only">Брой кредити</span>
+          <span className="sr-only">Брой проби</span>
           <input
             type="range"
             min={MIN}
@@ -153,7 +153,7 @@ function Kupuvane() {
             просто отказва да мине под 25, изглежда счупен — числото
             обяснява защо спира. */}
         <p className="mt-4 text-[12.5px] leading-snug text-white/45">
-          Минимум {MIN} кредита · €{MIN_EUR}. Наведнъж може да заредиш най-много{' '}
+          Минимум {MIN} проби · €{MIN_EUR}. Наведнъж може да заредиш най-много{' '}
           {MAX}.
         </p>
       </Patch>

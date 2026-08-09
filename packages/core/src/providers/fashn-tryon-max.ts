@@ -3,9 +3,13 @@
  *
  * ═══ ЗАЩО ДВЕ СТОЙНОСТИ СА ЗАКОВАНИ ═══
  *
- * FASHN се таксува 1–5 кредита за изображение според резолюцията и режима.
- * Ние продаваме кредит за €0.20, значи само `fast` + `1k` дава приемлив марж.
- * При `quality` + `2k` себестойността скача над €0.20 и работим на загуба.
+ * FASHN се таксува 1–5 свои кредита за изображение според резолюцията и
+ * режима. Ние продаваме проба за €0.20; при `balanced` + `1k` доставчикът
+ * взима 2 свои кредита ≈ $0.15, което още оставя марж. При `quality` + `2k`
+ * себестойността минава цената и работим на загуба.
+ *
+ * ⚠ „Кредит" тук значи кредит НА FASHN. На потребителя не показваме кредити
+ *   изобщо — за него единицата е „проба".
  *
  * Затова тези две стойности НЕ са параметри на функция, НЕ се четат от
  * средата и НЕ се приемат от клиента. Стоят тук и се променят само с
@@ -79,6 +83,20 @@ function aspectRatioInput(
   };
 }
 
+/**
+ * Текстът, с който човекът насочва генерацията.
+ *
+ * Реже се до 300 знака и се сплесква в един ред. Дълъг текст не подобрява
+ * резултата, а увеличава шанса моделът да пренебрегне самата дреха — а тя е
+ * причината човекът да е тук.
+ */
+const MAX_PROMPT_LENGTH = 300;
+
+function promptInput(prompt: string | null | undefined): Record<string, string> {
+  const clean = (prompt ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_PROMPT_LENGTH);
+  return clean.length > 0 ? { prompt: clean } : {};
+}
+
 export class FashnTryonMax implements TryOnProvider {
   readonly name = 'fashn_tryon_max' as const;
 
@@ -100,6 +118,10 @@ export class FashnTryonMax implements TryOnProvider {
 
       // Only send aspect_ratio when valid.
       ...aspectRatioInput(input.aspectRatio),
+
+      // Текстът от човека. Празен низ НЕ се изпраща: FASHN го брои като
+      // указание „нищо" и резултатът се разминава с този без полето.
+      ...promptInput(input.prompt),
 
       // Generate exactly one image per request.
       num_images: 1,

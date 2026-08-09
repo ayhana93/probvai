@@ -84,6 +84,7 @@ export async function runGenerationJob(job: GenerateJob): Promise<void> {
       personKey: true,
       garmentKey: true,
       aspectRatio: true,
+      prompt: true,
       merchant: true,
       productUrl: true,
       category: true,
@@ -123,6 +124,7 @@ export async function runGenerationJob(job: GenerateJob): Promise<void> {
         personUrl,
         garmentUrl,
         aspectRatio: generation.aspectRatio as never,
+        prompt: generation.prompt,
       });
       jobId = started.jobId;
 

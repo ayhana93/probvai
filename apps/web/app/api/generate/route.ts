@@ -31,7 +31,7 @@ const MESSAGES: Record<StartGenerationFailure, { status: number; text: string }>
     status: 503,
     text: 'Правим поддръжка. Ще работим пак съвсем скоро.',
   },
-  INSUFFICIENT_CREDITS: { status: 402, text: 'Нямаш кредити. Зареди, за да продължиш.' },
+  INSUFFICIENT_CREDITS: { status: 402, text: 'Нямаш проби. Зареди, за да продължиш.' },
   USER_SUSPENDED: { status: 403, text: 'Профилът ти е спрян. Пиши ни.' },
   USER_NOT_FOUND: { status: 401, text: 'Трябва да влезеш в профила си.' },
 };
@@ -43,7 +43,22 @@ type Body = {
   source?: unknown;
   merchant?: unknown;
   productUrl?: unknown;
+  prompt?: unknown;
 };
+
+/**
+ * Дължината на текста към доставчика.
+ *
+ * ═══ ЗАЩО СЕ РЕЖЕ, А НЕ СЕ ОТКАЗВА ═══
+ *
+ * Отказана заявка заради дълъг текст значи изгубено писане и нула проби.
+ * Отрязаният текст значи проба, направена по първите триста знака — а
+ * същественото при такова описание е винаги в началото.
+ *
+ * Полето в интерфейса и без това не пуска повече; това тук е за всичко,
+ * което идва по друг път.
+ */
+const MAX_PROMPT = 300;
 
 /**
  * POST /api/generate
@@ -94,11 +109,19 @@ export async function POST(request: Request): Promise<Response> {
   // и тогава името на магазина не се записва, защото не го знаем.
   const source = body.source === 'LINK' ? 'LINK' : 'UPLOAD';
 
+  // Един ред, без празни краища. Текст с нови редове не носи повече смисъл
+  // на доставчика, а прави записа в базата по-труден за четене.
+  const prompt =
+    typeof body.prompt === 'string'
+      ? body.prompt.replace(/\s+/g, ' ').trim().slice(0, MAX_PROMPT)
+      : '';
+
   const result = await startGeneration({
     userId: session.user.id,
     personKey,
     garmentKey: body.garmentKey,
     aspectRatio,
+    prompt: prompt.length > 0 ? prompt : null,
     source,
     merchant: typeof body.merchant === 'string' ? body.merchant : null,
     productUrl: typeof body.productUrl === 'string' ? body.productUrl : null,

@@ -25,7 +25,7 @@ export default function EksportPage() {
 
       <h1 className="display mt-3 text-[26px]">Твоите данни</h1>
       <p className="mt-2 text-[14px] leading-snug text-ink-45">
-        Сваля се файл с профила ти, всички проби и историята на кредитите.
+        Сваля се файл с профила ти, всички проби и историята им — кога, колко и защо са начислени или изхарчени.
       </p>
 
       <a href="/api/me/danni" download className="mt-6 block">

@@ -245,7 +245,7 @@ export function ResultView({
             <Sparks className="h-4 w-6 text-violet" />
             <span className="text-[14px] font-semibold">Махни водния знак</span>
           </span>
-          <span className="text-[13px] text-ink-45">Зареди кредити ›</span>
+          <span className="text-[13px] text-ink-45">Зареди проби ›</span>
         </Link>
       )}
 
@@ -264,7 +264,7 @@ export function ResultView({
 
         <Button variant="quiet" size="md" className="flex-1" onClick={onRetry}>
           <RetryIcon />
-          Пак · 1 кредит
+          Пак · 1 проба
         </Button>
       </div>
 

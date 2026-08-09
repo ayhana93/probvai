@@ -36,7 +36,7 @@ const LEFT: Item[] = [
 ];
 
 const RIGHT: Item[] = [
-  { href: R.credits, label: 'Кредити', Icon: CreditsIcon },
+  { href: R.credits, label: 'Проби', Icon: CreditsIcon },
   { href: R.settings, label: 'Настройки', Icon: SettingsIcon },
 ];
 

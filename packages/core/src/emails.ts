@@ -46,11 +46,11 @@ export function purchaseEmail(options: {
   const { credits, amountEur, balance, appUrl } = options;
 
   return {
-    subject: `Заредени са ${credits} кредита`,
+    subject: `Заредени са ${credits} проби`,
     html: shell(
       'Плащането мина',
       `<p style="margin:0 0 20px;color:#48484a">
-         Заредихме <strong>${credits} кредита</strong> за <strong>€${amountEur}</strong>.
+         Заредихме <strong>${credits} проби</strong> за <strong>€${amountEur}</strong>.
          Балансът ти сега е <strong>${balance}</strong>.
        </p>
        <p style="margin:0 0 24px;color:#48484a">
@@ -58,19 +58,19 @@ export function purchaseEmail(options: {
        </p>
        <a href="${appUrl}/proba" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:600">Пробвай нещо</a>
        <p style="margin:24px 0 0;font-size:13px;color:#8e8e93">
-         Кредитите не изтичат. Един кредит е една проба.
+         Пробите не изтичат. Една проба е едно генериране.
        </p>`,
     ),
     text: [
       'Плащането мина',
       '',
-      `Заредихме ${credits} кредита за €${amountEur}.`,
+      `Заредихме ${credits} проби за €${amountEur}.`,
       `Балансът ти сега е ${balance}.`,
       '',
       'От сега нататък пробите ти излизат без воден знак.',
-      `${appUrl}/proba`,
+      `${appUrl}/p9xz`,
       '',
-      'Кредитите не изтичат. Един кредит е една проба.',
+      'Пробите не изтичат. Една проба е едно генериране.',
     ].join('\n'),
   };
 }

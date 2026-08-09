@@ -104,9 +104,9 @@ export default function UspehPage() {
 
       {phase === 'done' ? (
         <>
-          <h1 className="display mt-7 text-[26px]">Кредитите са в теб</h1>
+          <h1 className="display mt-7 text-[26px]">Пробите са в теб</h1>
           <p className="mt-2 text-[14px] leading-snug text-ink-45">
-            Балансът ти е {credits} {credits === 1 ? 'кредит' : 'кредита'}. От
+            Балансът ти е {credits} {credits === 1 ? 'проба' : 'проби'}. От
             сега нататък пробите излизат без воден знак.
           </p>
         </>
@@ -114,7 +114,7 @@ export default function UspehPage() {
         <>
           <h1 className="display mt-7 text-[26px]">Плащането е прието</h1>
           <p className="mt-2 max-w-[280px] text-[14px] leading-snug text-ink-45">
-            Кредитите се зареждат. Понякога банката потвърждава с минута
+            Пробите се зареждат. Понякога банката потвърждава с минута
             закъснение — влез пак след малко и ще са там.
           </p>
         </>

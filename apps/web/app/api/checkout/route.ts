@@ -16,10 +16,10 @@ export const dynamic = 'force-dynamic';
  */
 
 const MESSAGES: Record<QuoteFailure | 'STRIPE_ERROR', { status: number; text: string }> = {
-  NOT_A_NUMBER: { status: 400, text: 'Броят кредити не е валиден.' },
-  BELOW_MINIMUM: { status: 400, text: 'Минималната покупка е 25 кредита.' },
-  ABOVE_MAXIMUM: { status: 400, text: 'Наведнъж може да заредиш най-много 200 кредита.' },
-  BAD_STEP: { status: 400, text: 'Броят кредити трябва да е кратен на 5.' },
+  NOT_A_NUMBER: { status: 400, text: 'Броят проби не е валиден.' },
+  BELOW_MINIMUM: { status: 400, text: 'Минималната покупка е 25 проби.' },
+  ABOVE_MAXIMUM: { status: 400, text: 'Наведнъж може да заредиш най-много 200 проби.' },
+  BAD_STEP: { status: 400, text: 'Броят проби трябва да е кратен на 5.' },
   STRIPE_ERROR: {
     status: 502,
     text: 'Плащането не тръгна. Пробвай пак след минута.',

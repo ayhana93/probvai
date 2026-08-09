@@ -29,6 +29,20 @@ const RATIOS = [
 
 type Ratio = (typeof RATIOS)[number]['value'];
 
+/**
+ * Колкото приема и сървърът. Полето спира дотук, за да не се пише текст,
+ * който после мълчаливо се реже.
+ */
+const MAX_PROMPT = 300;
+
+/** Примери за описанието. Показват ВИДА неща, не готови изречения. */
+const PROMPT_EXAMPLES = [
+  'на плажа по залез',
+  'офис обстановка',
+  'студийна светлина',
+  'на улицата в града',
+];
+
 const GOOD = [
   'Лицето да се вижда ясно',
   'Цял ръст или до коленете',
@@ -83,6 +97,9 @@ function Proba() {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [ratioOpen, setRatioOpen] = React.useState(false);
   const [link, setLink] = React.useState('');
+
+  /** Какво иска човекът с думи. Празно значи „нищо конкретно". */
+  const [prompt, setPrompt] = React.useState('');
 
   /**
    * Ключовете на качените снимки.
@@ -241,6 +258,7 @@ function Proba() {
           personKey,
           garmentKey: key,
           aspectRatio: ratio,
+          prompt: prompt.trim(),
           // Линкът е единственият случай, в който знаем от кой магазин е
           // дрехата. При качена снимка не пращаме магазин — и после в
           // гардероба не пише име, вместо да пише измислено.
@@ -284,8 +302,80 @@ function Proba() {
         </p>
       )}
 
-      {/* ── Стъпка 1 ────────────────────────────────────────────────────── */}
+      {/* ── Описанието ──────────────────────────────────────────────────────
+
+          ═══ ЗАЩО Е ПЪРВО, ПРЕДИ СНИМКИТЕ ═══
+
+          Написано най-отдолу, до копчето, то се чете като „още нещо, ако
+          ти се занимава" — и никой не го попълва. Тук е първото, което се
+          вижда: човек тъкмо е решил какво иска и точно тогава може да го
+          каже с думи.
+
+          ═══ ЗАЩО НЕ Е ЗАДЪЛЖИТЕЛНО ═══
+
+          Пробата работи и без него. Заковано като условие, то би спряло
+          човека, дошъл да види как му стои една тениска. Затова: покана, не
+          въпрос — и изрично казваме какво се печели.
+
+          ═══ ЗАЩО ИМА ГОТОВИ ПРИМЕРИ ═══
+
+          „Опиши какво искаш" пред празно поле е изпит. Три натискаеми
+          примера показват какъв ВИД неща стават — обстановка, светлина,
+          поза — и оттам човек допълва свое. */}
       <section className="mt-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-[17px] font-semibold">Кажи какво искаш</h2>
+          <span className="rounded-full bg-paper-2 px-2 py-0.5 text-[11px] font-semibold text-ink-45">
+            по избор
+          </span>
+        </div>
+
+        <p className="mt-1.5 text-[13px] leading-snug text-ink-45">
+          Напишеш ли няколко думи, снимката излиза по-добра. Обстановка,
+          светлина, поза — каквото си представяш.
+        </p>
+
+        <textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value.slice(0, MAX_PROMPT))}
+          rows={2}
+          placeholder="Например: на плажа по залез, естествена светлина"
+          className={cn(
+            'mt-3 w-full resize-none rounded-[var(--radius-card)] bg-paper-2 px-4 py-3',
+            'text-[15px] leading-snug placeholder:text-ink-25',
+            'outline-none transition-[background-color] duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+            'focus:bg-paper-3',
+          )}
+        />
+
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="-mx-5 flex-1 overflow-x-auto px-5">
+            <div className="flex gap-2">
+              {PROMPT_EXAMPLES.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setPrompt(example)}
+                  className="pressable shrink-0 whitespace-nowrap rounded-full bg-paper-2 px-3 py-1.5 text-[12px] font-medium text-ink-70"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Броячът се появява едва към края. Показан от нулата, той
+              превръща поканата в изискване. */}
+          {prompt.length > MAX_PROMPT - 80 && (
+            <span className="shrink-0 text-[12px] tabular-nums text-ink-25">
+              {MAX_PROMPT - prompt.length}
+            </span>
+          )}
+        </div>
+      </section>
+
+      {/* ── Стъпка 1 ────────────────────────────────────────────────────── */}
+      <section className="mt-8">
         <div className="flex items-center gap-3">
           <StepBadge n={1} done={hasPhoto} />
           <h2 className="text-[17px] font-semibold">Твоята снимка</h2>
@@ -456,7 +546,7 @@ function Proba() {
             </button>
 
             <p className="mt-5 text-[13.5px] font-semibold">
-              {starting ? (stage ?? 'Пускаме я...') : 'Натисни логото · 1 кредит'}
+              {starting ? (stage ?? 'Пускаме я...') : 'Натисни логото · 1 проба'}
             </p>
           </div>
         </section>
@@ -485,7 +575,7 @@ function Proba() {
         <p className="enter-rise mt-3 text-center text-[13px] text-danger">{error}</p>
       ) : (
         <p className="mt-3 text-center text-[12.5px] text-ink-45">
-          Имаш {credits} {credits === 1 ? 'кредит' : 'кредита'}.
+          Имаш {credits} {credits === 1 ? 'проба' : 'проби'}.
         </p>
       )}
 

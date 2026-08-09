@@ -37,7 +37,7 @@ const WAITING: { after: number; text: string }[] = [
   { after: 0, text: 'Обикновено отнема около 30 секунди.' },
   { after: 20, text: 'Още малко. Пробваме как пада плата.' },
   { after: 45, text: 'Тази е от по-бавните. Стой още малко.' },
-  { after: 70, text: 'Ако не стане до минута и половина, кредитът се връща.' },
+  { after: 70, text: 'Ако не стане до минута и половина, пробата ти се връща.' },
 ];
 
 function waitingText(elapsed: number): string {
@@ -93,7 +93,7 @@ export default function ProbaResultPage() {
   if (done || timedOut) {
     const message =
       view?.errorMessage ??
-      'Отне прекалено дълго. Кредитът ти е върнат — пробвай пак.';
+      'Отне прекалено дълго. Пробата ти е върната — пробвай пак.';
 
     return (
       <main className="flex min-h-[78dvh] flex-col items-center justify-center px-8 text-center">
