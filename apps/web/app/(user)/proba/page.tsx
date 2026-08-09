@@ -35,12 +35,24 @@ type Ratio = (typeof RATIOS)[number]['value'];
  */
 const MAX_PROMPT = 300;
 
-/** Примери за описанието. Показват ВИДА неща, не готови изречения. */
+/**
+ * Примери за описанието.
+ *
+ * ═══ ЗАЩО СА ЗА ДРЕХИ, А НЕ ЗА ОБСТАНОВКА ═══
+ *
+ * Първите бяха „на плажа по залез", „студийна светлина". Те са верни за
+ * генератор на изображения изобщо — и грешни за това приложение. Тук човек
+ * идва да види как му стои ЕДНА дреха; примери за декор го насочват към
+ * друга употреба и после резултатът не отговаря на очакването.
+ *
+ * Затова примерите казват какво да се СМЕНИ и какво да остане. Това е и
+ * най-честото разминаване: човек качва цял аутфит, а иска само блузата.
+ */
 const PROMPT_EXAMPLES = [
-  'на плажа по залез',
-  'офис обстановка',
-  'студийна светлина',
-  'на улицата в града',
+  'смени само горнището',
+  'смени само панталона',
+  'сложи само обувките',
+  'остави прическата както е',
 ];
 
 const GOOD = [
@@ -161,30 +173,51 @@ function Proba() {
   const ready = hasPhoto && hasGarment;
 
   /**
-   * ═══ ТРЕТАТА СТЪПКА СЕ ПОКАЗВА САМА ═══
+   * ═══ ЕКРАНЪТ ВЪРВИ СЛЕД ЧОВЕКА ═══
    *
-   * Появява се под сгъвката — човек тъкмо е гледал карето на дрехата и
-   * няма причина да скролва надолу, защото не знае, че там вече има нещо.
+   * Всяка стъпка е висока колкото трябва, а следващата стои под сгъвката.
+   * Довърши ли човек една, той няма причина да скролва — не знае, че там
+   * долу вече има нещо ново.
    *
-   * Придвижването е `smooth` и до „nearest", не до върха: екранът трябва
-   * само да ДОПУСНЕ новото в полезрението, а не да прескочи. Рязък скок
-   * тук се чете като че ли приложението е сменило страницата.
+   * Затова екранът се придвижва сам: качена снимка → дрехата, готова дреха
+   * → описанието. Всяко придвижване става ВЕДНЪЖ, при първото завършване на
+   * стъпката. Иначе всяка смяна на снимката щеше да дърпа екрана пак, точно
+   * когато човек гледа нещо друго.
    *
-   * Прави се веднъж — при първото ставане на готов. Иначе всяка смяна на
-   * снимката щеше да дърпа екрана пак.
+   * `block: 'start'` заедно със `scroll-mt-4` слага заглавието на стъпката
+   * малко под ръба — залепено за самия ръб, то изглежда отрязано.
    */
-  const third = React.useRef<HTMLElement | null>(null);
-  const nudged = React.useRef(false);
+  const stepTwo = React.useRef<HTMLElement | null>(null);
+  const stepThree = React.useRef<HTMLElement | null>(null);
+  const stepFour = React.useRef<HTMLElement | null>(null);
+  const nudged = React.useRef({ two: false, three: false });
+
+  function goTo(target: React.RefObject<HTMLElement | null>): void {
+    // Един кадър изчакване, за да е рисувано вече новото съдържание.
+    setTimeout(() => {
+      target.current?.scrollIntoView({
+        // Изключил ли е човек движението в системата си, преместването е
+        // мигновено. `scroll-behavior` от CSS не важи тук: изричното
+        // `smooth` в кода бие настройката на страницата.
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'auto'
+          : 'smooth',
+        block: 'start',
+      });
+    }, 120);
+  }
 
   React.useEffect(() => {
-    if (!ready || nudged.current) return;
-    nudged.current = true;
-    // Един кадър изчакване, за да е рисувана вече секцията.
-    const timer = setTimeout(() => {
-      third.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 60);
-    return () => clearTimeout(timer);
-  }, [ready]);
+    if (!hasPhoto || nudged.current.two) return;
+    nudged.current.two = true;
+    goTo(stepTwo);
+  }, [hasPhoto]);
+
+  React.useEffect(() => {
+    if (!hasGarment || nudged.current.three) return;
+    nudged.current.three = true;
+    goTo(stepThree);
+  }, [hasGarment]);
 
   /**
    * Пускането на генерация.
@@ -302,78 +335,6 @@ function Proba() {
         </p>
       )}
 
-      {/* ── Описанието ──────────────────────────────────────────────────────
-
-          ═══ ЗАЩО Е ПЪРВО, ПРЕДИ СНИМКИТЕ ═══
-
-          Написано най-отдолу, до копчето, то се чете като „още нещо, ако
-          ти се занимава" — и никой не го попълва. Тук е първото, което се
-          вижда: човек тъкмо е решил какво иска и точно тогава може да го
-          каже с думи.
-
-          ═══ ЗАЩО НЕ Е ЗАДЪЛЖИТЕЛНО ═══
-
-          Пробата работи и без него. Заковано като условие, то би спряло
-          човека, дошъл да види как му стои една тениска. Затова: покана, не
-          въпрос — и изрично казваме какво се печели.
-
-          ═══ ЗАЩО ИМА ГОТОВИ ПРИМЕРИ ═══
-
-          „Опиши какво искаш" пред празно поле е изпит. Три натискаеми
-          примера показват какъв ВИД неща стават — обстановка, светлина,
-          поза — и оттам човек допълва свое. */}
-      <section className="mt-6">
-        <div className="flex items-center gap-2">
-          <h2 className="text-[17px] font-semibold">Кажи какво искаш</h2>
-          <span className="rounded-full bg-paper-2 px-2 py-0.5 text-[11px] font-semibold text-ink-45">
-            по избор
-          </span>
-        </div>
-
-        <p className="mt-1.5 text-[13px] leading-snug text-ink-45">
-          Напишеш ли няколко думи, снимката излиза по-добра. Обстановка,
-          светлина, поза — каквото си представяш.
-        </p>
-
-        <textarea
-          value={prompt}
-          onChange={(event) => setPrompt(event.target.value.slice(0, MAX_PROMPT))}
-          rows={2}
-          placeholder="Например: на плажа по залез, естествена светлина"
-          className={cn(
-            'mt-3 w-full resize-none rounded-[var(--radius-card)] bg-paper-2 px-4 py-3',
-            'text-[15px] leading-snug placeholder:text-ink-25',
-            'outline-none transition-[background-color] duration-[var(--dur-menu)] ease-[var(--ease-out)]',
-            'focus:bg-paper-3',
-          )}
-        />
-
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <div className="-mx-5 flex-1 overflow-x-auto px-5">
-            <div className="flex gap-2">
-              {PROMPT_EXAMPLES.map((example) => (
-                <button
-                  key={example}
-                  type="button"
-                  onClick={() => setPrompt(example)}
-                  className="pressable shrink-0 whitespace-nowrap rounded-full bg-paper-2 px-3 py-1.5 text-[12px] font-medium text-ink-70"
-                >
-                  {example}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Броячът се появява едва към края. Показан от нулата, той
-              превръща поканата в изискване. */}
-          {prompt.length > MAX_PROMPT - 80 && (
-            <span className="shrink-0 text-[12px] tabular-nums text-ink-25">
-              {MAX_PROMPT - prompt.length}
-            </span>
-          )}
-        </div>
-      </section>
-
       {/* ── Стъпка 1 ────────────────────────────────────────────────────── */}
       <section className="mt-8">
         <div className="flex items-center gap-3">
@@ -427,7 +388,7 @@ function Proba() {
       </section>
 
       {/* ── Стъпка 2 ────────────────────────────────────────────────────── */}
-      <section className="mt-8">
+      <section ref={stepTwo} className="mt-8 scroll-mt-4">
         <div className="flex items-center gap-3">
           <StepBadge n={2} done={hasGarment} />
           <h2 className="text-[17px] font-semibold">Дрехата</h2>
@@ -478,6 +439,82 @@ function Proba() {
       </section>
 
       {/* ── Стъпка 3 ────────────────────────────────────────────────────────
+
+          ═══ ЗАЩО Е СТЪПКА, А НЕ ПОЛЕ НАЙ-ОТГОРЕ ═══
+
+          Първо стоеше преди снимките. Там се четеше като въпрос, на който
+          трябва да отговориш, преди да ти позволят да продължиш — а той е
+          по избор.
+
+          Като трета стъпка идва на реда си: снимките са готови, човекът
+          вече вижда какво ще пробва и точно тогава може да каже в каква
+          обстановка го иска.
+
+          ═══ ЗАЩО НОМЕРЪТ Е ЗЕЛЕН И БЕЗ ДА Е ПОПЪЛНЕНО ═══
+
+          `done` не се връзва с текста. Незелен номер значи „липсва нещо" —
+          а тук нищо не липсва. Значката „по избор" го казва с думи, а
+          номерът не бива да ѝ противоречи с цвят. */}
+      <section ref={stepThree} className="mt-8 scroll-mt-4">
+        <div className="flex items-center gap-3">
+          <StepBadge n={3} done />
+          <h2 className="text-[17px] font-semibold">Кажи какво да смени</h2>
+          <span className="rounded-full bg-paper-2 px-2 py-0.5 text-[11px] font-semibold text-ink-45">
+            по избор
+          </span>
+        </div>
+
+        <p className="mt-2 text-[13px] leading-snug text-ink-45">
+          Напишеш ли какво точно искаш, пробата излиза по-добра. Кое от
+          дрехите да се смени и кое да остане както е.
+        </p>
+
+        <textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value.slice(0, MAX_PROMPT))}
+          rows={2}
+          placeholder="Например: смени само горнището, панталонът да остане"
+          className={cn(
+            'mt-3 w-full resize-none rounded-[var(--radius-card)] bg-paper-2 px-4 py-3',
+            'text-[15px] leading-snug placeholder:text-ink-25',
+            'outline-none transition-[background-color] duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+            'focus:bg-paper-3',
+          )}
+        />
+
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="-mx-5 flex-1 overflow-x-auto px-5">
+            <div className="flex gap-2">
+              {PROMPT_EXAMPLES.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => {
+                    setPrompt(example);
+                    // Избран пример е завършена стъпка — за разлика от
+                    // писането, при което всяко натискане на клавиш би
+                    // дърпало екрана.
+                    goTo(stepFour);
+                  }}
+                  className="pressable shrink-0 whitespace-nowrap rounded-full bg-paper-2 px-3 py-1.5 text-[12px] font-medium text-ink-70"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Броячът се появява едва към края. Показан от нулата, той
+              превръща поканата в изискване. */}
+          {prompt.length > MAX_PROMPT - 80 && (
+            <span className="shrink-0 text-[12px] tabular-nums text-ink-25">
+              {MAX_PROMPT - prompt.length}
+            </span>
+          )}
+        </div>
+      </section>
+
+      {/* ── Стъпка 4 ────────────────────────────────────────────────────────
           ═══ ЗАЩО Я ЯМА, ДОКАТО ДВЕТЕ ГОРЕ НЕ СА ГОТОВИ ═══
 
           Сиво копче, което стои от самото начало, е обещание, което екранът
@@ -495,9 +532,9 @@ function Proba() {
           Цената пише ПОД него. Копче, което взима пари, без да казва колко,
           се натиска веднъж и после не се вярва на нито едно. */}
       {ready && (
-        <section ref={third} className="enter-rise mt-9">
+        <section ref={stepFour} className="enter-rise mt-9 scroll-mt-4">
           <div className="flex items-center gap-3">
-            <StepBadge n={3} />
+            <StepBadge n={4} />
             <h2 className="text-[17px] font-semibold">Готово — пробвай</h2>
           </div>
 
