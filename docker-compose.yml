@@ -58,5 +58,23 @@ services:
     ports:
       - '3000:3000'
 
+  # Работникът прави самите генерации. Отделен контейнер, защото една
+  # генерация държи процеса зает десетки секунди.
+  worker:
+    build:
+      context: .
+      target: worker
+    container_name: probvai-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL_SYSTEM: postgresql://app_system:app_system_dev@postgres:5432/probvai
+      DATABASE_URL_APP: postgresql://app_user:app_user_dev@postgres:5432/probvai
+
 volumes:
   pgdata:

@@ -13,7 +13,10 @@
   "scripts": {
     "dev": "npm run dev --workspace @probvai/web",
     "build": "npm run prisma:generate && npm run build --workspace @probvai/web",
+    "build:clean": "npm run prisma:generate && node scripts/build-clean.mjs",
     "start": "node scripts/start-standalone.mjs",
+    "worker": "tsx scripts/worker.ts",
+    "images": "node scripts/prepare-images.mjs",
     "lint": "npm run lint --workspace @probvai/web",
     "typecheck": "tsc --noEmit -p packages/db/tsconfig.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json",
     "test": "vitest run",

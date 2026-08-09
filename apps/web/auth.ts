@@ -16,11 +16,33 @@ import Apple from 'next-auth/providers/apple';
 import Facebook from 'next-auth/providers/facebook';
 import Google from 'next-auth/providers/google';
 import Resend from 'next-auth/providers/resend';
-import { dbSystem } from '@probvai/db';
+import { dbSystem, type PrismaClient } from '@probvai/db';
 import { reconcileFreeCredits, sendEmail } from '@probvai/core';
 import { magicLinkEmail } from '@/lib/emails';
 
-const system = dbSystem();
+/**
+ * ═══ ЗАЩО ТУК ИМА PROXY, А НЕ ПРОСТО `dbSystem()` ═══
+ *
+ * `const system = dbSystem()` изглежда безобидно, но отваря връзка към базата
+ * в мига, в който модулът се ЗАРЕЖДА. А този модул се зарежда от всеки
+ * защитен route, значи и при `next build`: стъпката „Collecting page data"
+ * внася всеки route файл, за да прочете настройките му.
+ *
+ * Резултатът беше билд, който иска DATABASE_URL_SYSTEM. Това е грешно по
+ * принцип: билдът произвежда артефакт, който върви на много среди, и не бива
+ * да знае паролата на нито една от тях. Тайните са на средата, не на кода.
+ *
+ * Proxy-то отлага извикването до първото истинско докосване на клиента —
+ * тоест до първата заявка. При билд никой не го докосва и връзка не се иска.
+ */
+const system = new Proxy({} as PrismaClient, {
+  get(_target, property, receiver) {
+    return Reflect.get(dbSystem(), property, receiver) as unknown;
+  },
+  has(_target, property) {
+    return Reflect.has(dbSystem(), property);
+  },
+});
 
 /**
  * Включваме само доставчиците, за които има ключове. Иначе Auth.js пада

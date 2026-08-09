@@ -1,17 +1,377 @@
 @import 'tailwindcss';
 
-/* Основните цветове на ПРОБВАЙ. Перленият градиент розово → лилаво → циан
-   идва във Фаза 3 заедно с героя. */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ПРОБВАЙ — дизайн език
+
+   Всичко тук е извадено от логото. Логото не е плосък градиент, а КОЛАЖ ОТ
+   МАТЕРИАЛИ: деним, кожа, фолио, кожухче, филц, плетка. Всяка буква седи на
+   отделно наклонено парче, а отгоре има ръчни маркерни драскулки.
+   Това е езикът: изрязано, залепено, тактилно, с човешка ръка отгоре.
+
+   ПРАВИЛОТО, КОЕТО ДЪРЖИ ВСИЧКО ДА НЕ СЕ РАЗПАДНЕ:
+   материалът се появява САМО в маркови моменти — герой, празни състояния,
+   заглавия, споделяне. Работните повърхности — форми, списъци, листове —
+   остават спокойни. Максимализъм навсякъде значи неизползваемо приложение.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @theme {
-  --color-ink: #1c1c1e;
+  /* ── Мастило и хартия ───────────────────────────────────────────────────
+     Хартията е ТОПЛА, не студено бяло. Идва от кремавото „В" в логото.
+     Студеното бяло би направило материалите да изглеждат евтини. */
+  --color-ink: #141416;
+  --color-ink-70: #45454b;
+  --color-ink-45: #77777f;
+  --color-ink-25: #a9a9b1;
+  --color-paper: #faf6ef;
+  --color-paper-2: #f1eae0;
+  --color-paper-3: #e5dcd0;
+
+  /* ── Материалите, буква по буква ────────────────────────────────────── */
+  --color-lime: #c9f23f; /* плетеното „Р" */
+  --color-lime-deep: #a6cc22;
+  --color-violet: #8b2fd6; /* косматото „О" */
+  --color-violet-soft: #b57bea;
+  --color-violet-wash: #f0e4fb;
+  --color-denim: #2f5d9e; /* дънковото „П" */
+  --color-denim-deep: #234878;
+  --color-stitch: #e8a13c; /* конците по денима */
+  --color-orange: #f5a623; /* филцовото „В" */
+  --color-cream: #f2e6d0; /* плетеното „В" */
+  --color-foil: #d8dde2; /* смачканото фолио */
+
+  /* ── Смисъл, не цвят ────────────────────────────────────────────────────
+     Едно действие на екран носи лайм. Второ лайм копче убива първото. */
+  --color-action: var(--color-lime);
+  --color-credit: var(--color-violet);
+  --color-warn: var(--color-orange);
+  --color-danger: #e5484d;
+  /* Същото червено, но за ТЪМЕН фон. #e5484d върху почти черно пада под
+     границата за четимост; това е изсветлено дотам, че да мине. */
+  --color-danger-soft: #ff9a9d;
+
+  /* ── Движение ───────────────────────────────────────────────────────────
+     Вградените CSS easing-и са прекалено слаби. Тези имат удар. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --dur-press: 140ms;
+  --dur-tip: 160ms;
+  --dur-menu: 200ms;
+  --dur-sheet: 320ms;
+
+  /* ── Радиуси ────────────────────────────────────────────────────────────
+     Парчетата НЕ са с еднакъв радиус в четирите ъгъла. Изрязаното с
+     ножица никога не е симетрично — точно това го прави да изглежда
+     залепено, а не нарисувано. */
+  --radius-patch: 16px 11px 18px 9px;
+  --radius-patch-alt: 10px 17px 8px 15px;
+  --radius-card: 20px;
+  --radius-pill: 999px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ОСНОВА
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   color-scheme: light;
 }
 
-/* Правило от Фаза 9, което спазваме от самото начало:
-   който е изключил движението, не вижда движение. */
+html {
+  -webkit-tap-highlight-color: transparent;
+
+  /*
+   * iOS сам уголемява текста при завъртане в хоризонтално положение. Това е
+   * от времето на сайтове за настолен компютър; тук чупи подредбата — редове,
+   * премерени за 13px, изведнъж стават 16px.
+   */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-feature-settings: 'ss01', 'cv01';
+  overscroll-behavior-y: none;
+
+  /*
+   * ═══ ЗАЩО ХОРИЗОНТАЛНО НЕ СЕ СКРОЛВА ═══
+   *
+   * Приложението е една колона; настрани няма какво да се гледа. Една дълга
+   * дума или широка снимка обаче правят страницата по-широка от екрана — и
+   * тогава ЦЕЛИЯТ изглед се измества настрани при плъзгане с палец, а
+   * закованото долно меню изглежда, че се разминава със съдържанието.
+   *
+   * `clip`, а не `hidden`: `hidden` прави от `body` контейнер за скролване
+   * и с това убива `position: sticky` вътре. `clip` само отрязва.
+   */
+  overflow-x: clip;
+
+  /*
+   * `viewport-fit=cover` пуска съдържанието под лентата на часа. Отстъпът е
+   * тук, на едно място, за да важи и за екраните извън приложението —
+   * входът, регистрацията, условията.
+   */
+  padding-top: env(safe-area-inset-top);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ШИРОК ЕКРАН: КОЛОНАТА ИЗГЛЕЖДА НАРОЧНА, А НЕ СЛУЧАЙНА
+
+   Приложението е една колона от 430 пиксела. На телефон тя е целият екран.
+   На лаптоп същата колона виси в средата на празно поле и изглежда като
+   страница, която не се е заредила докрай.
+
+   Затова отвъд 560 пиксела фонът наоколо потъмнява с един тон, а самата
+   колона остава хартиена и получава мек ръб. Разликата е малка нарочно —
+   целта е колоната да се чете като предмет, а не да се направи „рамка на
+   телефон", която остарява за половин година.
+
+   Прави се на `body`, не на компонент: така важи за ВСЕКИ екран наведнъж,
+   включително входа и условията, които са извън приложението.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 560px) {
+  body {
+    background: var(--color-paper-2);
+  }
+
+  /* Хартиената лента под съдържанието. `fixed`, за да не се движи при
+     скролване — иначе ръбът ѝ плува нагоре-надолу заедно с текста. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset-block: 0;
+    left: 50%;
+    width: 430px;
+    transform: translateX(-50%);
+    background: var(--color-paper);
+    box-shadow: 0 0 0 1px rgb(20 20 22 / 0.06), 0 18px 60px -30px rgb(20 20 22 / 0.35);
+    z-index: -1;
+    pointer-events: none;
+  }
+}
+
+/* Заглавията са изрязани букви: главни, събрани, тежки. */
+.display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   МАТЕРИАЛИТЕ
+   Всичко е чист CSS. Нула изображения — зареждат се мигновено, менят се с
+   една променлива и не тежат на LCP.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Деним: диагонална сплитка + зърно. */
+.tx-denim {
+  background-color: var(--color-denim);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.07) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.09) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.18));
+  color: #fff;
+}
+
+/* Шевът по ръба на денима — оранжев пунктир, както в логото. */
+.tx-denim-stitch {
+  position: relative;
+}
+.tx-denim-stitch::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1.5px dashed var(--color-stitch);
+  border-radius: inherit;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* Фолио: смачкано, с остри пречупвания на светлината. */
+.tx-foil {
+  background-color: var(--color-foil);
+  background-image:
+    conic-gradient(
+      from 210deg at 32% 28%,
+      #fff 0deg,
+      #b9c2cb 55deg,
+      #fdfdfd 110deg,
+      #9aa5b1 170deg,
+      #f2f5f8 220deg,
+      #aab4bf 290deg,
+      #fff 360deg
+    );
+  color: var(--color-ink);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(20, 20, 22, 0.18),
+    0 1.5px 0 rgba(20, 20, 22, 0.14),
+    0 6px 14px -10px rgba(20, 20, 22, 0.38);
+}
+
+/* Кожа: меко зърно, тъмно, с лек блясък отгоре. */
+.tx-leather {
+  background-color: #17171a;
+  background-image:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.1), transparent 42%),
+    radial-gradient(circle at 78% 82%, rgba(255, 255, 255, 0.05), transparent 46%);
+  color: #fff;
+}
+
+/* Филц: матово, с фино зърно. */
+.tx-felt {
+  background-color: var(--color-orange);
+  background-image:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.22), transparent 55%);
+  color: var(--color-ink);
+}
+
+/* Плетка: кръстосана нишка. */
+.tx-knit {
+  background-color: var(--color-lime);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 5px);
+  color: var(--color-ink);
+}
+
+/* Точки: лилавото „А" с черните точки. */
+.tx-dots {
+  background-color: var(--color-violet);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.72) 1.6px, transparent 1.7px);
+  background-size: 11px 11px;
+  color: #fff;
+}
+
+/* Кожухче: меко, размито, без остри ръбове. */
+.tx-fur {
+  background-color: #1b1b1e;
+  background-image:
+    radial-gradient(ellipse 8px 3px at 20% 30%, rgba(255, 255, 255, 0.13), transparent),
+    radial-gradient(ellipse 7px 3px at 62% 22%, rgba(255, 255, 255, 0.1), transparent),
+    radial-gradient(ellipse 9px 3px at 40% 68%, rgba(255, 255, 255, 0.11), transparent),
+    radial-gradient(ellipse 6px 3px at 82% 60%, rgba(255, 255, 255, 0.09), transparent);
+  background-size: 34px 34px;
+  color: var(--color-lime);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ПАРЧЕТО
+   Основната форма в приложението. Неравномерен радиус + плътна сянка
+   отдолу = изглежда залепено върху хартията, не нарисувано в нея.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.patch {
+  border-radius: var(--radius-patch);
+  box-shadow:
+    0 1.5px 0 rgba(20, 20, 22, 0.14),
+    0 6px 14px -10px rgba(20, 20, 22, 0.38);
+}
+.patch-alt {
+  border-radius: var(--radius-patch-alt);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ДВИЖЕНИЕ
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Всичко, което се натиска, отговаря. Обратната връзка е на натискане,
+   не на пускане — интерфейсът трябва да покаже, че е чул. */
+.pressable {
+  transition: transform var(--dur-press) var(--ease-out);
+  touch-action: manipulation;
+}
+.pressable:active {
+  transform: scale(0.97);
+}
+
+/* Hover само там, където има истински курсор. На телефон „hover" се пали
+   при докосване и оставя елементи заседнали в подсветено състояние. */
+@media (hover: hover) and (pointer: fine) {
+  .hoverable {
+    transition: transform var(--dur-menu) var(--ease-out);
+  }
+  .hoverable:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Влизане отдолу — за листове и ленти. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Нищо в реалния свят не се появява от нищото: не от scale(0). */
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.enter-rise {
+  animation: rise var(--dur-menu) var(--ease-out) both;
+}
+.enter-pop {
+  animation: pop var(--dur-menu) var(--ease-out) both;
+}
+
+/* Каскада при влизане на списък. Кратки закъснения — дългите правят
+   интерфейса муден. */
+.stagger > * {
+  animation: rise 260ms var(--ease-out) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay: 135ms; }
+.stagger > *:nth-child(5) { animation-delay: 180ms; }
+.stagger > *:nth-child(6) { animation-delay: 215ms; }
+
+/* Скелет при зареждане. Никакви въртящи се кръгчета. */
+@keyframes shimmer {
+  to {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-paper-2) 0%,
+    var(--color-paper-3) 40%,
+    var(--color-paper-2) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Видим фокус. Не се маха — маха се само при мишка. */
+:focus-visible {
+  outline: 3px solid var(--color-violet);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   КОЙТО Е ИЗКЛЮЧИЛ ДВИЖЕНИЕТО, НЕ ВИЖДА ДВИЖЕНИЕ
+   Намалено движение значи по-малко и по-меко, не нула. Прозрачността и
+   цветовете остават — те помагат за разбирането. Изчезва преместването.
+   ═══════════════════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -21,4 +381,200 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .pressable:active {
+    transform: none;
+  }
+  .hoverable:hover {
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ПЛЪЗГАЧ
+   Нативен `input[type=range]`, пребоядисан. Нативният върви на системата:
+   работи с клавиатура, с екранен четец и с влачене на телефон, без нито
+   ред наш код и без изпуснати кадри.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 30px;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-lime) 0 var(--progress),
+    rgba(255, 255, 255, 0.16) var(--progress) 100%
+  );
+}
+.range::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+.range::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-lime);
+}
+
+/* Дръжката е 28px — палецът я хваща без да се цели. */
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--color-lime);
+  border: 3px solid var(--color-ink);
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.6);
+  transition: transform var(--dur-press) var(--ease-out);
+}
+.range::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--color-lime);
+  border: 3px solid var(--color-ink);
+}
+
+/* Дръжката се уголемява при хващане — потвърждава, че е хваната. */
+.range:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .range:active::-webkit-slider-thumb {
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   СТАРТОВИЯТ ЕКРАН
+
+   Единственото място в приложението с истинска анимация. Оправдано е:
+   този екран се вижда веднъж — при първото отваряне и после почти никога.
+   Правилото „не анимирай това, което се гледа по сто пъти на ден" важи
+   за менюто и копчетата, не тук.
+
+   Всичко е на `transform` и `opacity`, тоест минава през видеокартата и не
+   кара браузъра да преизчислява разположение при всеки кадър. И е на CSS,
+   не на JavaScript: CSS анимациите вървят извън главната нишка и не падат
+   на кадри, докато страницата още се зарежда — а точно тогава се гледа
+   този екран.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Парчетата плуват едва-едва. Три градуса и осем пиксела — на ръба на
+   забележимото. По-голямо движение прави екрана неспокоен. */
+@keyframes float-patch {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+  }
+  50% {
+    transform: translateY(-8px) rotate(calc(var(--tilt, 0deg) + 1.5deg));
+  }
+}
+
+.float-patch {
+  animation: float-patch 5.5s var(--ease-in-out) infinite;
+}
+
+/* Изреченията се сменят с размиване, не с просто изчезване.
+   При чист преход се виждат ДВА текста едновременно и окото ги хваща като
+   два обекта. Размиването ги слива в един и преходът чете като смяна, а не
+   като застъпване. */
+@keyframes phrase-cycle {
+  0% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(6px);
+  }
+  /* Влизането свършва на 5%, а предишното изречение излиза чак на 36%.
+     Застъпването е нарочно: при три изречения на девет секунди всяко тръгва
+     точно когато предишното си отива, и на екрана НИКОГА няма празно.
+     Първата версия оставяше две трети от секундата с нищо — и точно тя
+     попадна на снимката. */
+  5%,
+  31% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+  36%,
+  100% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(-6px);
+  }
+}
+
+.phrase {
+  animation: phrase-cycle 9s var(--ease-out) infinite both;
+}
+
+/* Маркерният щрих се тегли, вместо да се появи. `stroke-dashoffset` е
+   единственият случай, в който се анимира нещо извън transform и opacity —
+   при SVG път то не струва преизчисляване на разположението. */
+@keyframes draw-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.draw-stroke {
+  stroke-dasharray: var(--len, 200);
+  stroke-dashoffset: var(--len, 200);
+  animation: draw-stroke 900ms var(--ease-out) 380ms both;
+}
+
+/* При изключени анимации екранът остава ЧЕТИМ, не празен: изреченията
+   спират да се въртят и стои първото. Намалено движение значи по-малко
+   движение, не по-малко съдържание. */
+@media (prefers-reduced-motion: reduce) {
+  .float-patch,
+  .draw-stroke {
+    animation: none;
+  }
+  .draw-stroke {
+    stroke-dashoffset: 0;
+  }
+  .phrase {
+    animation: none;
+    opacity: 0;
+  }
+  .phrase:first-of-type {
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ЧУЖДИТЕ СНИМКИ НЕ СЕ СВАЛЯТ СЛУЧАЙНО
+
+   ⚠ ЧЕСТНО: това НЕ е защита. Скрийншот не може да бъде спрян от уеб
+   страница на нито един браузър — няма такъв механизъм и всяко твърдение
+   за обратното е невярно. Който отвори инструментите за разработчици или
+   направи снимка на екрана, взима изображението.
+
+   Тук се решава по-малкият, но истински проблем: задържането с пръст върху
+   чужда визия в Lookbook отваряше системното меню „Запази снимката" — все
+   едно е негова. `-webkit-touch-callout` маха точно това меню, `user-select`
+   и `user-drag` махат влаченето и маркирането.
+
+   Истинската защита е другаде и вече е налице: адресът към чужда снимка е
+   подписан, живее минути и работи само докато визията е публикувана.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.no-save {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
 }

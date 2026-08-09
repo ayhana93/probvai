@@ -21,7 +21,7 @@ import { env, requireEnv } from './env';
 import { prepareUserImage, type PrepareFailure } from './image';
 
 /** Какъв е файлът. Влиза в ключа. */
-export type ImageKind = 'person' | 'garment' | 'result';
+export type ImageKind = 'person' | 'garment' | 'result' | 'avatar';
 
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
@@ -65,6 +65,25 @@ function s3(): S3Client {
 
 function bucket(): string {
   return requireEnv('R2_BUCKET', 'достъп до хранилището');
+}
+
+/**
+ * Настроено ли е изобщо хранилището.
+ *
+ * ═══ ЗАЩО ГО ИМА ═══
+ *
+ * Без тези четири стойности `s3()` хвърля някъде дълбоко в качването и
+ * човекът отсреща вижда „Нещо се обърка" — съобщение, което не помага нито
+ * на него, нито на нас. С тази проверка отказът излиза ПРЕДИ да сме чели
+ * файла и казва точно какво липсва: настройка на средата, не негова грешка.
+ */
+export function storageConfigured(): boolean {
+  return Boolean(
+    env.R2_ACCESS_KEY_ID &&
+      env.R2_SECRET_ACCESS_KEY &&
+      env.R2_BUCKET &&
+      (env.R2_ACCOUNT_ID || env.R2_ENDPOINT),
+  );
 }
 
 // ---------------------------------------------------------------------------

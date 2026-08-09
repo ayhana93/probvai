@@ -1,11 +1,11 @@
-import { startPhoneVerification, type StartFailure } from '@probvai/core';
+import { startPhoneVerification, type PhoneStartFailure } from '@probvai/core';
 import { jsonError, readJson, requireUser } from '@/lib/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /** Съобщения за човека. Никое от тях не издава вътрешни подробности. */
-const MESSAGES: Record<StartFailure, { status: number; text: string }> = {
+const MESSAGES: Record<PhoneStartFailure, { status: number; text: string }> = {
   INVALID_PHONE: { status: 400, text: 'Този номер не изглежда правилен. Провери го.' },
   PHONE_IN_USE: { status: 409, text: 'Този номер вече се използва от друг профил.' },
   ALREADY_VERIFIED: { status: 409, text: 'Телефонът ти вече е потвърден.' },

@@ -17,7 +17,7 @@ function shell(title: string, body: string): string {
     ${body}
   </div>
   <div style="max-width:480px;margin:16px auto 0;text-align:center;font-size:12px;color:#8e8e93">
-    Ако не си поискала това писмо, просто го изтрий.
+    Ако това писмо не е за теб, просто го изтрий.
   </div>
 </body>
 </html>`;
@@ -33,6 +33,6 @@ export function magicLinkEmail(url: string): { subject: string; html: string; te
        <p style="margin:24px 0 0;font-size:13px;color:#8e8e93">Ако бутонът не работи, копирай този адрес:<br>
        <span style="word-break:break-all">${url}</span></p>`,
     ),
-    text: `Влез в ПРОБВАЙ\n\nОтвори тази връзка, за да влезеш:\n${url}\n\nВалидна е 24 часа и работи само веднъж.\nАко не си поискала това писмо, просто го изтрий.`,
+    text: `Влез в ПРОБВАЙ\n\nОтвори тази връзка, за да влезеш:\n${url}\n\nВалидна е 24 часа и работи само веднъж.\nАко това писмо не е за теб, просто го изтрий.`,
   };
 }
