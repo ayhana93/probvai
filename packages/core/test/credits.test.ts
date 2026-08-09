@@ -211,6 +211,25 @@ describe('Начисляване', () => {
     expect(await getBalance(userId)).toBe(10);
   });
 
+  /**
+   * ═══ ПОСЛЕДНИЯТ ПОЯС ═══
+   *
+   * Всичко останало в този файл проверява, че КОДЪТ не оставя отрицателен
+   * баланс. Този тест проверява друго: че дори някой да заобиколи целия код и
+   * да пише направо в таблицата, базата отказва.
+   *
+   * Точно това е разликата между „не се случва" и „не може да се случи".
+   */
+  it('базата отказва отрицателен баланс дори при пряк запис', async () => {
+    const userId = await makeUser(2);
+
+    await expect(
+      system.$executeRaw`UPDATE users SET credits = -347 WHERE id = ${userId}`,
+    ).rejects.toThrow();
+
+    expect(await getBalance(userId)).toBe(2);
+  });
+
   it('спрян потребител не може да харчи', async () => {
     const userId = await makeUser(5);
     await system.user.update({ where: { id: userId }, data: { status: 'SUSPENDED' } });
@@ -243,7 +262,18 @@ describe('Съгласуваност: SUM(ledger.delta) === users.credits', () =
     }
     await Promise.all(operations);
 
-    // Проверката минава през ВСИЧКИ потребители в базата, не само нашите.
+    /**
+     * ═══ ЗАЩО САМО НАШИТЕ ПОТРЕБИТЕЛИ ═══
+     *
+     * Проверката минаваше през ВСИЧКИ редове в базата. Звучи по-строго и е
+     * по-слабо: на машина за разработка има хора, направени на ръка за някой
+     * екран — с начален баланс и празен леджер. Тестът падаше заради тях и
+     * съобщението сочеше към кредитите, където нямаше нищо счупено.
+     *
+     * Тест, който пада по причина извън това, което проверява, се научава да
+     * бъде подминаван. Затова обхватът е точно редовете, които този тест е
+     * направил — а те минават през същия код, който би изпуснал кредит.
+     */
     const rows = await system.$queryRaw<
       { id: string; credits: number; ledger_sum: number }[]
     >`
@@ -252,6 +282,7 @@ describe('Съгласуваност: SUM(ledger.delta) === users.credits', () =
              COALESCE(SUM(l.delta), 0)::int AS ledger_sum
       FROM users u
       LEFT JOIN credit_ledger l ON l.user_id = u.id
+      WHERE u.id = ANY(${createdUsers}::text[])
       GROUP BY u.id, u.credits
       HAVING u.credits <> COALESCE(SUM(l.delta), 0)::int
     `;

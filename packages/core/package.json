@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./env": "./src/env.ts",
     "./credits": "./src/credits.ts",
+    "./pricing": "./src/pricing.ts",
     "./storage": "./src/storage.ts",
     "./queue": "./src/queue.ts",
     "./providers": "./src/providers/index.ts",

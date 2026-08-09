@@ -42,7 +42,17 @@ import { addCredits, revokeCredits } from './credits';
 import { purchaseEmail } from './emails';
 import { env, requireEnv } from './env';
 import { sendEmail } from './mail';
+import {
+  alignRules,
+  quote,
+  type PriceQuote,
+  type PriceRules,
+  type QuoteFailure,
+  type QuoteResult,
+} from './pricing';
 import { recordSpend } from './tier';
+
+export type { PriceQuote, PriceRules, QuoteFailure, QuoteResult } from './pricing';
 
 /**
  * Версията на API-то е закована нарочно. Ако някой ден вдигнем библиотеката
@@ -75,58 +85,36 @@ export function resetStripeClient(): void {
 // Цената
 // ---------------------------------------------------------------------------
 
-export type PriceQuote = {
-  credits: number;
-  /** Сумата в евроцентове — Stripe работи с най-малката единица. */
-  amountCents: number;
-  /** Същата сума за човек: „12.40". */
-  amountEur: string;
-};
-
-export type QuoteFailure =
-  | 'NOT_A_NUMBER'
-  | 'BELOW_MINIMUM'
-  | 'ABOVE_MAXIMUM'
-  | 'BAD_STEP';
-
-export type QuoteResult =
-  | { ok: true; quote: PriceQuote }
-  | { ok: false; reason: QuoteFailure };
+/**
+ * Правилата на покупката, както са зададени в средата.
+ *
+ * ═══ ЗАЩО ЕКРАНЪТ ГИ ПИТА, А НЕ ГИ ЗНАЕ ═══
+ *
+ * Екранът за зареждане ги носеше сам: цена 0.20, минимум 25, таван 200,
+ * записани в компонента. Средата междувременно казваше 1000. Резултатът беше
+ * плъзгач, който спира на 200 без причина, и цена на екрана, която щеше да се
+ * разминава с истинската в мига, в който някой пипне `CREDIT_PRICE_EUR`.
+ *
+ * Сега числата излизат оттук и стигат до браузъра през `GET /api/checkout`.
+ * Едно място за истината, а не две, които рано или късно се разминават.
+ */
+export function purchaseRules(): PriceRules {
+  return alignRules({
+    pricePerCredit: env.CREDIT_PRICE_EUR,
+    min: env.MIN_PURCHASE_CREDITS,
+    max: env.MAX_PURCHASE_CREDITS,
+    step: PURCHASE_STEP_CREDITS,
+  });
+}
 
 /**
- * Смята цената на пакет кредити.
+ * Смята цената на пакет проби по правилата от средата.
  *
  * Отделена е от route handler-а нарочно: тестът я вика директно, а
  * `/api/checkout` и екранът за зареждане ползват едно и също число.
- *
- * ⚠ Закръглянето е на ЦЕЛИЯ пакет, не на кредит. `credits * price` в
- * плаваща запетая дава 24.999999999999996 за 125 кредита по 0.20 —
- * `Math.round` върху центовете го оправя веднъж и завинаги.
  */
 export function quoteCredits(credits: unknown): QuoteResult {
-  if (typeof credits !== 'number' || !Number.isInteger(credits)) {
-    return { ok: false, reason: 'NOT_A_NUMBER' };
-  }
-  if (credits < env.MIN_PURCHASE_CREDITS) {
-    return { ok: false, reason: 'BELOW_MINIMUM' };
-  }
-  if (credits > env.MAX_PURCHASE_CREDITS) {
-    return { ok: false, reason: 'ABOVE_MAXIMUM' };
-  }
-  if (credits % PURCHASE_STEP_CREDITS !== 0) {
-    return { ok: false, reason: 'BAD_STEP' };
-  }
-
-  const amountCents = Math.round(credits * env.CREDIT_PRICE_EUR * 100);
-
-  return {
-    ok: true,
-    quote: {
-      credits,
-      amountCents,
-      amountEur: (amountCents / 100).toFixed(2),
-    },
-  };
+  return quote(credits, purchaseRules());
 }
 
 // ---------------------------------------------------------------------------
@@ -184,9 +172,17 @@ export async function createCheckoutSession(
             price_data: {
               currency: 'eur',
               unit_amount: quote.amountCents,
+              /**
+                ═══ ЗАЩО „ПРОБИ", А НЕ „КРЕДИТИ" ═══
+
+                Този надпис не стои при нас. Той е на страницата за плащане на
+                Stripe, в разписката и в извлечението от банката — тоест на
+                трите места, където човек гледа НАЙ-внимателно. Навсякъде в
+                приложението пише „проби"; ако точно тук пише „кредити", в мига
+                на плащането излиза дума, която купувачът вижда за пръв път. */
               product_data: {
-                name: `${quote.credits} кредита за ПРОБВАЙ`,
-                description: 'Един кредит е една проба. Кредитите не изтичат.',
+                name: `${quote.credits} проби за ПРОБВАЙ`,
+                description: 'Една проба е едно генериране. Пробите не изтичат.',
               },
             },
           },
