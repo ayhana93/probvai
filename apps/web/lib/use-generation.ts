@@ -40,6 +40,7 @@ export type GenerationView = {
   source: 'UPLOAD' | 'LINK';
   merchant: string | null;
   category: string | null;
+  prompt: string | null;
   errorCode: string | null;
   errorMessage?: string | null;
   createdAt: string;

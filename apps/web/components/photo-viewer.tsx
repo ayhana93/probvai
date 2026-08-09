@@ -26,15 +26,32 @@
 
 import * as React from 'react';
 import { CrossIcon } from '@/components/ui/icons';
+import { cn } from '@/lib/cn';
 
 export function PhotoViewer({
   src,
   alt = 'Готовата проба',
   onClose,
+  bare = false,
+  guard = false,
 }: {
   src: string;
   alt?: string;
   onClose: () => void;
+  /**
+   * Без кръстче. Ползва се в Lookbook, където снимката е чужда и екранът
+   * трябва да е само снимка — натискане където и да е я затваря.
+   */
+  bare?: boolean;
+  /**
+   * Пречи на задържането да отвори „Запази снимката".
+   *
+   * ⚠ Това НЕ е защита. Скрийншот не може да бъде спрян от уеб страница на
+   * нито един браузър, а човек с малко желание стига до файла. Целта е
+   * друга: случайното задържане върху чужда снимка да не предлага сваляне,
+   * все едно е наша.
+   */
+  guard?: boolean;
 }) {
   React.useEffect(() => {
     const previous = document.body.style.overflow;
@@ -68,18 +85,24 @@ export function PhotoViewer({
         src={src}
         alt={alt}
         draggable={false}
-        className="max-h-full max-w-full object-contain"
+        onContextMenu={guard ? (event) => event.preventDefault() : undefined}
+        className={cn(
+          'max-h-full max-w-full object-contain',
+          guard && 'no-save',
+        )}
       />
 
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Затвори"
-        className="pressable absolute right-4 grid size-11 place-items-center rounded-full bg-paper/15 text-paper backdrop-blur-sm"
-        style={{ top: 'max(16px, calc(env(safe-area-inset-top) + 8px))' }}
-      >
-        <CrossIcon className="size-5" />
-      </button>
+      {!bare && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Затвори"
+          className="pressable absolute right-4 grid size-11 place-items-center rounded-full bg-paper/15 text-paper backdrop-blur-sm"
+          style={{ top: 'max(16px, calc(env(safe-area-inset-top) + 8px))' }}
+        >
+          <CrossIcon className="size-5" />
+        </button>
+      )}
     </div>
   );
 }

@@ -31,7 +31,7 @@ type Item = {
 };
 
 const LEFT: Item[] = [
-  { href: '/', label: 'Начало', Icon: HomeIcon },
+  { href: '/', label: 'Lookbook', Icon: HomeIcon },
   { href: R.wardrobe, label: 'Гардероб', Icon: WardrobeIcon },
 ];
 

@@ -24,6 +24,8 @@ export type GenerationView = {
   /** Име на магазин има САМО при линк — иначе не знаем от къде е дрехата. */
   merchant: string | null;
   category: StyleCategory | null;
+  /** Какво е поискал човекът с думи. Пълни полето при „направи пак". */
+  prompt: string | null;
   errorCode: string | null;
   createdAt: string;
   /** Секунди от създаването — интерфейсът показва брояча. */
@@ -60,6 +62,7 @@ export async function loadGenerationView(
       merchant: true,
       productUrl: true,
       category: true,
+      prompt: true,
       personGender: true,
       savedAt: true,
       publishedAt: true,
@@ -94,6 +97,7 @@ export async function loadGenerationView(
     // правилото „магазин само при линк" се вижда и тук, на изхода.
     merchant: generation.source === 'LINK' ? generation.merchant : null,
     category: generation.category,
+    prompt: generation.prompt,
     errorCode: generation.errorCode,
     createdAt: generation.createdAt.toISOString(),
     elapsedSeconds: Math.max(

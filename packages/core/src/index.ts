@@ -125,6 +125,8 @@ export { providerByName, ProviderError } from './providers';
 export type { ProviderErrorCode } from './providers';
 
 // ── Генерация ──────────────────────────────────────────────────────────────
+export { buildPrompt, MAX_USER_PROMPT } from './prompt';
+
 export { startGeneration, failGeneration } from './generation';
 export type {
   StartGenerationInput,

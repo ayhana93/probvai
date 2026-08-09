@@ -12,7 +12,7 @@ import { Sparks } from '@/components/ui/scribble';
 import { useGeneration } from '@/lib/use-generation';
 import { useMe } from '@/lib/use-me';
 import { isStyleKey } from '@/lib/styles';
-import { R } from '@/lib/routes';
+import { R, tryOnResult } from '@/lib/routes';
 
 /**
  * ЕДНА ПРОБА: от чакане до резултат
@@ -71,6 +71,42 @@ export default function ProbaResultPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [view?.status]);
 
+  const [againError, setAgainError] = React.useState<string | null>(null);
+
+  /**
+   * ═══ ВТОРИ ОПИТ БЕЗ НОВО КАЧВАНЕ ═══
+   *
+   * Снимките вече са у нас. Сървърът ги взима от предишната проба и прави
+   * нова — виж `/api/generate/{id}/again`. Оттам нататък екранът е същият,
+   * само с друго id.
+   */
+  const again = React.useCallback(
+    async (text: string) => {
+      setAgainError(null);
+      try {
+        const response = await fetch(`/api/generate/${id}/again`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ prompt: text }),
+        });
+
+        const data = (await response.json()) as
+          | { generationId: string }
+          | { error: { message: string } };
+
+        if (!response.ok || !('generationId' in data)) {
+          setAgainError('error' in data ? data.error.message : 'Не се получи.');
+          return;
+        }
+
+        router.push(tryOnResult(data.generationId));
+      } catch {
+        setAgainError('Няма връзка. Провери интернета и пробвай пак.');
+      }
+    },
+    [id, router],
+  );
+
   // ── Готово ──────────────────────────────────────────────────────────────
   if (view?.status === 'DONE' && view.resultUrl) {
     return (
@@ -84,7 +120,8 @@ export default function ProbaResultPage() {
         published={view.published}
         canPublish={me?.profile.wardrobePublic ?? false}
         recommendations={view.recommendations}
-        onRetry={() => router.push(R.tryOn)}
+        prompt={view.prompt}
+        onAgain={again}
       />
     );
   }
@@ -103,9 +140,21 @@ export default function ProbaResultPage() {
 
         <p className="max-w-[280px] text-[15px] leading-snug text-ink-70">{message}</p>
 
+        {againError && (
+          <p className="enter-rise mt-3 max-w-[280px] text-[13px] text-danger">{againError}</p>
+        )}
+
+        {/* ═══ ПРИ ПРОВАЛ ПЪРВОТО КОПЧЕ Е СЪЩИТЕ СНИМКИ ═══
+
+            Пробата не е излязла, но снимките са у нас и пробата е върната в
+            баланса. Да пращаме човека на празен формуляр значеше да плати
+            чуждата грешка с още едно качване. */}
         <div className="mt-7 flex w-full max-w-[280px] flex-col gap-2.5">
-          <Button variant="action" size="lg" block onClick={() => router.push(R.tryOn)}>
-            Пробвай пак
+          <Button variant="action" size="lg" block onClick={() => void again('')}>
+            Пробвай пак със същите снимки
+          </Button>
+          <Button variant="quiet" size="md" block onClick={() => router.push(R.tryOn)}>
+            Нова проба
           </Button>
           <Link
             href="/"

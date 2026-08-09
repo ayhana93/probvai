@@ -6,15 +6,10 @@
  * Няма профили. Няма последователи. Няма чат. Няма коментари. Под всяка
  * визия има точно ДВЕ неща:
  *
- *   Харесване — тихо, вляво. Задържа в галерията.
- *   Remix     — лаймово, вдясно. Взима дрехата от тази визия и я слага
- *               направо в стъпка 2 на нова проба.
+ *   Харесване — тихо. Слага визията и в „Любими" в гардероба.
+ *   Remix     — взима дрехата от нея и я слага в стъпка 2 на нова проба.
  *
  * Второто е единственото, което води някъде, и затова изглежда като копче.
- *
- * „Запази" беше трето и отпадна: три действия под всяка снимка, при две
- * колонки на телефон, правят шест мънички цели за палец на един екран — и
- * нито едно от тях не е ясно кое е главното.
  *
  * ═══ ЗАЩО НЯМА ИМЕНА ПОД СНИМКИТЕ ═══
  *
@@ -22,18 +17,31 @@
  * съобщения, после модерация. Галерията показва ВИЗИИ, не хора — и точно
  * затова остава лека.
  *
- * ═══ БЕЗКРАЙНОТО СКРОЛВАНЕ ═══
+ * ═══ ЗАЩО НЕ СЕ ЗАРЕЖДА НАНОВО ПРИ ВСЯКО ВЛИЗАНЕ ═══
  *
- * Следващата страница се иска, когато пазачът в дъното влезе в екрана —
- * `IntersectionObserver`, не слушане на `scroll`. Второто вика функция на
- * всеки кадър при влачене и изяжда батерията.
+ * Галерията беше на екрана при всяко връщане към началото, и всеки път
+ * тръгваше от нула: празно, скелети, ново разбъркване. Човек, отворил проба
+ * и върнал се назад, губеше мястото си и виждаше друга подредба — все едно е
+ * в друго приложение.
+ *
+ * Сега страниците живеят в паметта на раздела (`cache` отдолу). Връщането
+ * показва същото, на същото място, мигновено. Ново разбъркване има при ново
+ * отваряне на приложението, не при всяко натискане на „назад".
+ *
+ * ═══ КАК СЕ ПОЯВЯВАТ НОВИ ВИЗИИ ═══
+ *
+ * На всеки половин минута, докато разделът се гледа, тихо се пита за първа
+ * страница с ново семе. Непознатите визии се слагат ОТГОРЕ — но само ако
+ * човекът е горе. Гледа ли по-надолу, те чакат и се появява малко копче
+ * „нови визии". Съдържание, което скача под пръста, е по-лошо от съдържание,
+ * което закъснява.
  */
 
 'use client';
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Patch } from '@/components/ui/patch';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { HeartIcon, RemixIcon } from '@/components/ui/icons';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
@@ -49,18 +57,50 @@ type Look = {
 
 type Page = { seed: string; nextCursor: string | null; items: Look[] };
 
+/** Колко често се проверява за нови визии, докато разделът се гледа. */
+const POLL_MS = 30_000;
+
+/** Докъде „човекът е горе" — под това ново съдържание може да влезе само. */
+const TOP_PX = 240;
+
+/**
+ * Паметта между влизанията.
+ *
+ * Обикновена променлива на модула, не хранилище: живее колкото разделът и
+ * изчезва при презареждане. Точно това искаме — „назад" пази мястото,
+ * ново отваряне започва наново.
+ */
+const cache = new Map<
+  string,
+  { seed: string; items: Look[]; cursor: string | null; end: boolean }
+>();
+
 export function Lookbook() {
   const router = useRouter();
-  const [looks, setLooks] = React.useState<Look[]>([]);
-  const [seed, setSeed] = React.useState<string | null>(null);
-  const [cursor, setCursor] = React.useState<string | null>(null);
   const [category, setCategory] = React.useState<StyleKey | null>(null);
-  const [end, setEnd] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
+
+  const key = category ?? 'all';
+  const saved = cache.get(key);
+
+  const [looks, setLooks] = React.useState<Look[]>(saved?.items ?? []);
+  const [seed, setSeed] = React.useState<string | null>(saved?.seed ?? null);
+  const [cursor, setCursor] = React.useState<string | null>(saved?.cursor ?? null);
+  const [end, setEnd] = React.useState(saved?.end ?? false);
+  const [loading, setLoading] = React.useState(!saved);
+  const [fresh, setFresh] = React.useState<Look[]>([]);
+  const [open, setOpen] = React.useState<Look | null>(null);
 
   const sentinel = React.useRef<HTMLDivElement | null>(null);
   // Пази от две едновременни искания за една и съща страница.
   const busy = React.useRef(false);
+
+  // Показаното се записва в паметта при всяка промяна — така връщането
+  // намира точно него, без да пита сървъра.
+  React.useEffect(() => {
+    if (looks.length > 0 && seed) {
+      cache.set(key, { seed, items: looks, cursor, end });
+    }
+  }, [key, looks, seed, cursor, end]);
 
   const load = React.useCallback(
     async (options: { fresh?: boolean } = {}) => {
@@ -96,8 +136,18 @@ export function Lookbook() {
     [seed, cursor, category],
   );
 
-  // Първо зареждане и презареждане при смяна на категория.
+  // Първо зареждане — само когато в паметта няма нищо за тази категория.
   React.useEffect(() => {
+    const stored = cache.get(category ?? 'all');
+    if (stored) {
+      setLooks(stored.items);
+      setSeed(stored.seed);
+      setCursor(stored.cursor);
+      setEnd(stored.end);
+      setLoading(false);
+      return;
+    }
+
     setLooks([]);
     setCursor(null);
     setSeed(null);
@@ -124,6 +174,52 @@ export function Lookbook() {
     return () => observer.disconnect();
   }, [end, load]);
 
+  /**
+   * Тихата проверка за нови визии.
+   *
+   * Пита се с НОВО семе: подредбата е случайна и „първа страница" при старото
+   * семе би върнала същите визии. Взимат се само непознатите.
+   */
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible' || busy.current) return;
+
+      const params = new URLSearchParams();
+      if (category) params.set('category', category);
+
+      void fetch(`/api/lookbook?${params}`, { cache: 'no-store' })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((page: Page | null) => {
+          if (!page) return;
+
+          setLooks((current) => {
+            const known = new Set(current.map((item) => item.id));
+            const added = page.items.filter((item) => !known.has(item.id));
+            if (added.length === 0) return current;
+
+            // Горе — влизат веднага. По-надолу — чакат копчето, за да не
+            // подскочи редът под пръста.
+            if (window.scrollY < TOP_PX) return [...added, ...current];
+
+            setFresh((waiting) => {
+              const seen = new Set(waiting.map((item) => item.id));
+              return [...waiting, ...added.filter((item) => !seen.has(item.id))];
+            });
+            return current;
+          });
+        })
+        .catch(() => undefined);
+    }, POLL_MS);
+
+    return () => clearInterval(timer);
+  }, [category]);
+
+  function showFresh(): void {
+    setLooks((current) => [...fresh, ...current]);
+    setFresh([]);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   async function toggleLike(look: Look): Promise<void> {
     // Показваме промяната веднага и я връщаме назад при отказ. Копче, което
     // чака мрежата, се натиска два пъти.
@@ -140,33 +236,25 @@ export function Lookbook() {
     );
 
     try {
-      const response = await fetch(`/api/lookbook/${look.id}/like`, {
-        method: 'POST',
-      });
+      const response = await fetch(`/api/lookbook/${look.id}/like`, { method: 'POST' });
       if (!response.ok) throw new Error('отказано');
     } catch {
-      setLooks((current) =>
-        current.map((item) => (item.id === look.id ? look : item)),
-      );
+      setLooks((current) => current.map((item) => (item.id === look.id ? look : item)));
     }
   }
 
   return (
-    <section className="mt-9">
-      {/* ═══ ЗАЩО ПОДЗАГЛАВИЕТО МОЖЕ ДА ИЗЧЕЗНЕ ═══
-
-          При включено увеличение в Safari екранът е широк 314 пиксела вместо
-          393. Тогава двете надписа се събираха едно върху друго — заглавието
-          е с тежък шрифт и не се свива, а подзаглавието се пренасяше нагоре.
-
-          Тук подзаглавието е второстепенно: то обяснява нещо, което снимките
-          отдолу и без това показват. По-добре да го няма, отколкото да лежи
-          върху заглавието. */}
+    <section className="mt-7">
       <div className="flex items-end justify-between gap-3">
         <h2 className="display shrink-0 text-[22px]">Lookbook</h2>
-        <span className="mb-1 hidden truncate text-[12.5px] text-ink-45 min-[340px]:inline">
-          визии от хората тук
-        </span>
+        {fresh.length > 0 && (
+          <button
+            onClick={showFresh}
+            className="pressable enter-rise mb-1 rounded-full bg-lime px-3 py-1.5 text-[12px] font-semibold text-ink shadow-[0_2px_0_var(--color-lime-deep)]"
+          >
+            {fresh.length} {fresh.length === 1 ? 'нова визия' : 'нови визии'}
+          </button>
+        )}
       </div>
 
       {/* ── Категориите ─────────────────────────────────────────────────────
@@ -177,27 +265,26 @@ export function Lookbook() {
           <Chip active={category === null} onClick={() => setCategory(null)}>
             Всички
           </Chip>
-          {STYLE_KEYS.map((key) => (
+          {STYLE_KEYS.map((styleKey) => (
             <Chip
-              key={key}
-              active={category === key}
-              onClick={() => setCategory(category === key ? null : key)}
+              key={styleKey}
+              active={category === styleKey}
+              onClick={() => setCategory(category === styleKey ? null : styleKey)}
             >
-              {STYLE_LABELS[key].emoji} {STYLE_LABELS[key].label}
+              {STYLE_LABELS[styleKey].emoji} {STYLE_LABELS[styleKey].label}
             </Chip>
           ))}
         </div>
       </div>
 
       {looks.length === 0 && !loading ? (
-        <Patch material="paper" className="mt-4 px-5 py-7 text-center">
+        <div className="mt-4 rounded-[var(--radius-card)] bg-paper-2 px-5 py-7 text-center">
           {/* ═══ ПРАЗНОТО СЪСТОЯНИЕ КАЗВА ЗАЩО Е ПРАЗНО ═══
 
               „Още няма визии" оставя човека да мисли, че екранът е счупен —
               нали има хора с публични гардероби. Истината е друга: публичен
               гардероб дава само ПРАВОТО. Всяка визия влиза тук поотделно, с
-              изрично натискане, и това е нарочно — публикуването на снимка с
-              лице не бива да се получава по невнимание. */}
+              изрично натискане, и това е нарочно. */}
           <p className="text-[14px] leading-snug text-ink-45">
             Тук още няма визии в тази категория.
           </p>
@@ -206,59 +293,66 @@ export function Lookbook() {
             пуска поотделно — отваряш я в гардероба и натискаш „Покажи в
             Lookbook“.
           </p>
-        </Patch>
+        </div>
       ) : (
-        <ul className="stagger mt-4 grid grid-cols-2 gap-3">
+        /* ═══ ЗАЩО КАРТИТЕ СА БЕЗ РАМКА И БЕЗ РЕД ОТДОЛУ ═══
+
+           Всяка визия стоеше в хартиено парче, а под снимката имаше отделен
+           ред с копчета. Двете заедно правеха рамка от 30 пиксела около
+           всяка снимка — на екран с две колонки това е повече рамка,
+           отколкото съдържание.
+
+           Сега снимката е цялата карта, а действията лежат ВЪРХУ нея, на
+           тъмна ивица долу. Галерията изглежда като галерия, а копчетата са
+           точно там, където е и палецът. */
+        <ul className="stagger mt-4 grid grid-cols-2 gap-2.5">
           {looks.map((look) => (
             <li key={look.id}>
-              <Patch material="paper" className="overflow-hidden p-1.5">
-                <div className="relative overflow-hidden rounded-[12px_9px_14px_8px] ring-2 ring-ink">
+              <div className="relative overflow-hidden rounded-[18px_12px_20px_11px] bg-paper-3 ring-2 ring-ink">
+                {/* Натискането отваря визията на цял екран. Обвивката поема
+                    натискането вместо снимката — така задържането не отваря
+                    системното „Запази снимката". */}
+                <button
+                  type="button"
+                  onClick={() => setOpen(look)}
+                  aria-label="Отвори на цял екран"
+                  className="block w-full"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/lookbook/${look.id}/image`}
                     alt=""
                     loading="lazy"
                     draggable={false}
-                    className="aspect-[3/4] w-full object-cover"
+                    onContextMenu={(event) => event.preventDefault()}
+                    className="no-save aspect-[4/5] w-full object-cover"
                   />
+                </button>
 
-                  {isStyleKey(look.category) && (
-                    <span className="absolute left-1.5 top-1.5 rounded-full bg-ink/80 px-2 py-0.5 text-[10px] font-semibold text-paper backdrop-blur-sm">
-                      {STYLE_LABELS[look.category].emoji}{' '}
-                      {STYLE_LABELS[look.category].label}
-                    </span>
-                  )}
-                </div>
+                {isStyleKey(look.category) && (
+                  <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-ink/75 px-2 py-0.5 text-[10px] font-semibold text-paper backdrop-blur-sm">
+                    {STYLE_LABELS[look.category].emoji}{' '}
+                    {STYLE_LABELS[look.category].label}
+                  </span>
+                )}
 
-                {/* ═══ ДВЕ КОПЧЕТА, НЕ ТРИ ═══
-
-                    „Запази" отпадна. Три действия под всяка снимка при две
-                    колонки на телефон значи шест мънички цели за палец на
-                    един екран — и нито едно от тях не е ясно кое е главното.
-
-                    Останаха харесването (тихо, вляво) и remix (лаймово,
-                    вдясно). Второто е ЕДИНСТВЕНОТО, което води някъде: взима
-                    дрехата от тази визия и я слага направо в стъпка 2 на нова
-                    проба. Затова изглежда като копче, а харесването — не.
-
-                    Иконите са начертани, не емоджита: емоджито се рисува от
-                    системата, изглежда различно на всеки телефон и цветът му
-                    не се управлява. */}
-                <div className="mt-2 flex items-center justify-between gap-2 px-0.5 pb-0.5">
+                {/* Действията върху тъмна ивица. Преливането нагоре пази
+                    четимостта и на светла снимка, без да я закрива. */}
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-ink/85 to-transparent px-2 pb-2 pt-6">
                   <button
                     aria-label={look.liked ? 'Махни харесването' : 'Харесай'}
                     aria-pressed={look.liked}
                     disabled={look.mine}
                     onClick={() => void toggleLike(look)}
                     className={cn(
-                      'pressable flex h-9 items-center gap-1 rounded-full px-2',
+                      'pressable flex h-8 items-center gap-1 rounded-full px-1.5',
                       'transition-colors duration-[var(--dur-menu)] ease-[var(--ease-out)]',
-                      look.liked ? 'text-danger' : 'text-ink-45',
-                      look.mine && 'pointer-events-none opacity-30',
+                      look.liked ? 'text-danger-soft' : 'text-white/85',
+                      look.mine && 'pointer-events-none opacity-40',
                     )}
                   >
-                    <HeartIcon filled={look.liked} />
-                    <span className="min-w-3 text-[12px] font-semibold tabular-nums">
+                    <HeartIcon filled={look.liked} className="size-[18px]" />
+                    <span className="min-w-2 text-[11.5px] font-semibold tabular-nums">
                       {look.likeCount > 0 ? look.likeCount : ''}
                     </span>
                   </button>
@@ -266,26 +360,22 @@ export function Lookbook() {
                   <button
                     aria-label="Пробвай тази дреха върху себе си"
                     onClick={() => router.push(`${R.tryOn}?vdahnovenie=${look.id}`)}
-                    className={cn(
-                      'pressable flex h-9 items-center gap-1.5 rounded-full bg-lime pl-2.5 pr-3',
-                      'text-[12px] font-semibold text-ink',
-                      'shadow-[0_2px_0_var(--color-lime-deep)]',
-                    )}
+                    className="pressable flex h-8 items-center gap-1 rounded-full bg-lime pl-2 pr-2.5 text-[11.5px] font-semibold text-ink"
                   >
-                    <RemixIcon className="size-[18px]" />
+                    <RemixIcon className="size-4" />
                     Remix
                   </button>
                 </div>
-              </Patch>
+              </div>
             </li>
           ))}
         </ul>
       )}
 
       {loading && (
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="skeleton aspect-[3/4] rounded-[var(--radius-card)]" />
-          <div className="skeleton aspect-[3/4] rounded-[var(--radius-card)]" />
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="skeleton aspect-[4/5] rounded-[18px_12px_20px_11px]" />
+          <div className="skeleton aspect-[4/5] rounded-[18px_12px_20px_11px]" />
         </div>
       )}
 
@@ -295,6 +385,18 @@ export function Lookbook() {
         <p className="mt-5 text-center text-[12.5px] text-ink-25">
           Това е всичко засега. Утре ще има още.
         </p>
+      )}
+
+      {/* Цял екран: само снимката. Без кръстче — натискане където и да е я
+          затваря. `guard` маха системното „Запази снимката" при задържане. */}
+      {open && (
+        <PhotoViewer
+          bare
+          guard
+          src={`/api/lookbook/${open.id}/image`}
+          alt="Визия от Lookbook"
+          onClose={() => setOpen(null)}
+        />
       )}
     </section>
   );

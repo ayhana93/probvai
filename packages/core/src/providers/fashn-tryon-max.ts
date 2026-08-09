@@ -19,6 +19,7 @@
  *   и спирачката спира да работи.
  */
 
+import { buildPrompt } from '../prompt';
 import { fashnPoll, fashnRun } from './fashn-client';
 import type { AspectRatio, PollResult, RunInput, TryOnProvider } from './types';
 
@@ -83,20 +84,6 @@ function aspectRatioInput(
   };
 }
 
-/**
- * Текстът, с който човекът насочва генерацията.
- *
- * Реже се до 300 знака и се сплесква в един ред. Дълъг текст не подобрява
- * резултата, а увеличава шанса моделът да пренебрегне самата дреха — а тя е
- * причината човекът да е тук.
- */
-const MAX_PROMPT_LENGTH = 300;
-
-function promptInput(prompt: string | null | undefined): Record<string, string> {
-  const clean = (prompt ?? '').replace(/\s+/g, ' ').trim().slice(0, MAX_PROMPT_LENGTH);
-  return clean.length > 0 ? { prompt: clean } : {};
-}
-
 export class FashnTryonMax implements TryOnProvider {
   readonly name = 'fashn_tryon_max' as const;
 
@@ -119,9 +106,15 @@ export class FashnTryonMax implements TryOnProvider {
       // Only send aspect_ratio when valid.
       ...aspectRatioInput(input.aspectRatio),
 
-      // Текстът от човека. Празен низ НЕ се изпраща: FASHN го брои като
-      // указание „нищо" и резултатът се разминава с този без полето.
-      ...promptInput(input.prompt),
+      /**
+       * Указанието. НИКОГА не е само това, което човекът е написал.
+       *
+       * `buildPrompt` слага отпред правилата за самоличността — лицето,
+       * стойката и фигурата не се пипат. Те важат и когато полето е празно,
+       * защото са условие на продукта, а не пожелание на потребителя.
+       * Виж `packages/core/src/prompt.ts`.
+       */
+      prompt: buildPrompt(input.prompt),
 
       // Generate exactly one image per request.
       num_images: 1,

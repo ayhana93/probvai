@@ -29,11 +29,25 @@ import Link from 'next/link';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { RecoBlocks, type RecoBlockView } from '@/components/reco-blocks';
 import { Button } from '@/components/ui/button';
+import { Sheet } from '@/components/ui/sheet';
 import { LookFrame } from '@/components/ui/look-frame';
 import { RetryIcon, SaveIcon, ShareIcon } from '@/components/ui/icons';
 import { Sparks } from '@/components/ui/scribble';
 import { STYLE_LABELS, type StyleKey } from '@/lib/styles';
+import { cn } from '@/lib/cn';
 import { R } from '@/lib/routes';
+
+/**
+ * Подсказки за втория опит.
+ *
+ * Всички са за онова, което се обърква най-често — а то никога не е дрехата,
+ * а човекът върху нея.
+ */
+const AGAIN_HINTS = [
+  'остави прическата както е',
+  'запази стойката',
+  'смени само горнището',
+];
 
 export type ResultViewProps = {
   generationId: string;
@@ -47,7 +61,10 @@ export type ResultViewProps = {
   /** Може ли изобщо да публикува — зависи от публичния гардероб. */
   canPublish?: boolean;
   recommendations?: RecoBlockView[];
-  onRetry?: () => void;
+  /** Текстът от предишния опит. Пълни полето при „направи пак". */
+  prompt?: string | null;
+  /** Пуска нова проба със същите снимки. Връща id-то на новата. */
+  onAgain?: (prompt: string) => Promise<void>;
 };
 
 type SaveState = 'idle' | 'working' | 'done' | 'failed';
@@ -63,13 +80,30 @@ export function ResultView({
   published = false,
   canPublish = false,
   recommendations = [],
-  onRetry,
+  prompt = null,
+  onAgain,
 }: ResultViewProps) {
   const [share, setShare] = React.useState<ShareState>('idle');
   const [save, setSave] = React.useState<SaveState>(saved ? 'done' : 'idle');
   const [isPublished, setPublished] = React.useState(published);
   const [publishError, setPublishError] = React.useState<string | null>(null);
   const [zoomed, setZoomed] = React.useState(false);
+
+  /**
+   * ═══ „НАПРАВИ ПАК" Е ГЛАВНОТО ВТОРО ДЕЙСТВИЕ ═══
+   *
+   * Моделът е генеративен и не дава два еднакви резултата. Един на няколко
+   * пъти излиза с променено лице или изкривена стойка. Дотук единственият
+   * изход беше начало отначало: намери снимката, качи я, намери дрехата,
+   * качи и нея. Заради това хората се отказваха след ЕДИН лош резултат.
+   *
+   * Снимките вече са у нас. Второто копче ги ползва наново и отваря малък
+   * лист, в който може да се добави какво да се промени — вторият опит
+   * обикновено идва с научено („не пипай прическата").
+   */
+  const [againOpen, setAgainOpen] = React.useState(false);
+  const [againPrompt, setAgainPrompt] = React.useState(prompt ?? '');
+  const [againBusy, setAgainBusy] = React.useState(false);
 
   /**
    * Запазване: сваляне в телефона + отметка в гардероба.
@@ -262,9 +296,14 @@ export function ResultView({
           {share === 'working' ? 'Готви се...' : 'Сподели'}
         </Button>
 
-        <Button variant="quiet" size="md" className="flex-1" onClick={onRetry}>
+        <Button
+          variant="quiet"
+          size="md"
+          className="flex-1"
+          onClick={() => setAgainOpen(true)}
+        >
           <RetryIcon />
-          Пак · 1 проба
+          Направи пак
         </Button>
       </div>
 
@@ -308,6 +347,63 @@ export function ResultView({
       )}
 
       <RecoBlocks blocks={recommendations} />
+
+      {/* ── Направи пак ─────────────────────────────────────────────────── */}
+      <Sheet open={againOpen} onClose={() => setAgainOpen(false)} title="Направи пак">
+        <div className="pb-2">
+          <p className="text-[13.5px] leading-snug text-ink-70">
+            Същите снимки, нов резултат. Няма нужда да качваш нищо.
+          </p>
+
+          <textarea
+            value={againPrompt}
+            onChange={(event) => setAgainPrompt(event.target.value.slice(0, 300))}
+            rows={2}
+            placeholder="Например: остави прическата както е"
+            className={cn(
+              'mt-4 w-full resize-none rounded-[var(--radius-card)] bg-paper-2 px-4 py-3',
+              'text-[15px] leading-snug placeholder:text-ink-25',
+              'outline-none transition-[background-color] duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+              'focus:bg-paper-3',
+            )}
+          />
+
+          <div className="-mx-1 mt-2 overflow-x-auto px-1">
+            <div className="flex gap-2">
+              {AGAIN_HINTS.map((hint) => (
+                <button
+                  key={hint}
+                  type="button"
+                  onClick={() => setAgainPrompt(hint)}
+                  className="pressable shrink-0 whitespace-nowrap rounded-full bg-paper-2 px-3 py-1.5 text-[12px] font-medium text-ink-70"
+                >
+                  {hint}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button
+            variant="action"
+            size="lg"
+            block
+            className="mt-5"
+            busy={againBusy}
+            onClick={() => {
+              if (!onAgain || againBusy) return;
+              setAgainBusy(true);
+              void onAgain(againPrompt.trim()).finally(() => setAgainBusy(false));
+            }}
+          >
+            {againBusy ? 'Пускаме я...' : 'Направи пак · 1 проба'}
+          </Button>
+
+          <p className="mt-2 text-center text-[12px] leading-snug text-ink-25">
+            Лицето, стойката и фигурата не се променят при никоя проба — това
+            е зададено винаги.
+          </p>
+        </div>
+      </Sheet>
     </main>
   );
 }
