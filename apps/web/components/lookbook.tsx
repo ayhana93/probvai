@@ -24,17 +24,25 @@
  * и върнал се назад, губеше мястото си и виждаше друга подредба — все едно е
  * в друго приложение.
  *
- * Сега страниците живеят в паметта на раздела (`cache` отдолу). Връщането
+ * Сега страниците живеят в паметта на раздела (`lib/cache`). Връщането
  * показва същото, на същото място, мигновено. Ново разбъркване има при ново
  * отваряне на приложението, не при всяко натискане на „назад".
  *
  * ═══ КАК СЕ ПОЯВЯВАТ НОВИ ВИЗИИ ═══
  *
- * На всеки половин минута, докато разделът се гледа, тихо се пита за първа
- * страница с ново семе. Непознатите визии се слагат ОТГОРЕ — но само ако
- * човекът е горе. Гледа ли по-надолу, те чакат и се появява малко копче
- * „нови визии". Съдържание, което скача под пръста, е по-лошо от съдържание,
- * което закъснява.
+ * На всеки петнайсет секунди — и веднага щом разделът се върне на преден
+ * план — тихо се пита какво е публикувано СЛЕД последното, което знаем.
+ * Новите визии влизат ОТГОРЕ, но само ако човекът е горе. Гледа ли по-надолу,
+ * те чакат и се появява малко копче „нови визии". Съдържание, което скача под
+ * пръста, е по-лошо от съдържание, което закъснява.
+ *
+ * ═══ КАК ИЗЧЕЗВАТ СВАЛЕНИТЕ ═══
+ *
+ * Свали ли собственикът визия от галерията, снимката ѝ спира да се дава и
+ * останалите виждаха празно каре с въпросителна. Сега всяка снимка, която не
+ * се зареди, маха визията си от списъка и от паметта — тихо, без съобщение.
+ * Няма причина да се обяснява отсъствието на нещо, което човекът не е
+ * поглеждал.
  */
 
 'use client';
@@ -43,8 +51,9 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { HeartIcon, RemixIcon } from '@/components/ui/icons';
-import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
+import { STYLE_KEYS, STYLE_LABELS, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
+import { readCache, writeCache } from '@/lib/cache';
 import { R } from '@/lib/routes';
 
 type Look = {
@@ -55,10 +64,17 @@ type Look = {
   mine: boolean;
 };
 
-type Page = { seed: string; nextCursor: string | null; items: Look[] };
+type Page = {
+  seed: string | null;
+  nextCursor: string | null;
+  /** Кога е публикувана най-новата визия в галерията. Идва само при първата
+   *  страница и при проверката за ново. */
+  newest: string | null;
+  items: Look[];
+};
 
 /** Колко често се проверява за нови визии, докато разделът се гледа. */
-const POLL_MS = 30_000;
+const POLL_MS = 15_000;
 
 /** Докъде „човекът е горе" — под това ново съдържание може да влезе само. */
 const TOP_PX = 240;
@@ -66,21 +82,55 @@ const TOP_PX = 240;
 /**
  * Паметта между влизанията.
  *
- * Обикновена променлива на модула, не хранилище: живее колкото разделът и
- * изчезва при презареждане. Точно това искаме — „назад" пази мястото,
- * ново отваряне започва наново.
+ * ═══ ЗАЩО Е В ОБЩИЯ СКЛАД, А НЕ ТУК ═══
+ *
+ * Беше обикновена променлива на този файл и работеше — докато галерията
+ * беше единствената, която я пипа. Публикуването обаче става в ГАРДЕРОБА, а
+ * оттам няма как да се посегне на променлива, скрита в друг модул. Резултат:
+ * човек публикува визия, връща се и не я вижда; маха я — а тя стои с празно
+ * каре и въпросителна, защото снимката вече дава 404.
+ *
+ * Затова паметта живее в `lib/cache` и има ОБЩ ПРЕФИКС: `dropCache('lookbook:')`
+ * от гардероба я изхвърля цялата, независимо коя категория е била отворена.
  */
-const cache = new Map<
-  string,
-  { seed: string; items: Look[]; cursor: string | null; end: boolean }
->();
+type Cached = {
+  seed: string;
+  items: Look[];
+  cursor: string | null;
+  end: boolean;
+  /** Котвата за „има ли ново" — пази се, за да не се губи при връщане. */
+  newest: string | null;
+};
+
+const cacheKey = (category: StyleKey | null) => `lookbook:${category ?? 'all'}`;
+
+/**
+ * Слепва два списъка, без една визия да влезе два пъти.
+ *
+ * ═══ ЗАЩО НЕ СТИГА ПРОВЕРКАТА ПРЕДИ ИЗВИКВАНЕТО ═══
+ *
+ * Списъкът се пълни от три страни: скролването добавя отдолу, тихата
+ * проверка слага отгоре, а копчето „нови визии" изсипва изчакалите. Всяка от
+ * трите гледа какво има В МОМЕНТА и решава кое е ново — но между гледането и
+ * записа минава мрежа. Две проверки, тръгнали една след друга, виждат едно и
+ * също „в момента" и слагат едни и същи визии по два пъти. На екрана това са
+ * две еднакви плочки; в React — два реда с еднакъв ключ.
+ *
+ * Затова последната дума е тук, вътре в самото обновяване на списъка, където
+ * `current` вече е истината, а не снимка отпреди секунда.
+ */
+function merge(before: Look[], after: Look[]): Look[] {
+  const seen = new Set(before.map((item) => item.id));
+  const extra = after.filter((item) => !seen.has(item.id));
+  return extra.length === 0 ? before : [...before, ...extra];
+}
 
 export function Lookbook() {
   const router = useRouter();
   const [category, setCategory] = React.useState<StyleKey | null>(null);
 
-  const key = category ?? 'all';
-  const saved = cache.get(key);
+  const key = cacheKey(category);
+  const saved = readCache<Cached>(key);
 
   const [looks, setLooks] = React.useState<Look[]>(saved?.items ?? []);
   const [seed, setSeed] = React.useState<string | null>(saved?.seed ?? null);
@@ -90,15 +140,46 @@ export function Lookbook() {
   const [fresh, setFresh] = React.useState<Look[]>([]);
   const [open, setOpen] = React.useState<Look | null>(null);
 
+  /**
+   * Котвата за „има ли ново".
+   *
+   * Държи се в `ref`, а не в състояние: тихата проверка я чете и я мести, но
+   * от нея не зависи нищо на екрана. В състояние би пускала прерисуване на
+   * цялата галерия на всеки петнайсет секунди — за число, което никой не вижда.
+   */
+  const newest = React.useRef<string | null>(saved?.newest ?? null);
+
   const sentinel = React.useRef<HTMLDivElement | null>(null);
   // Пази от две едновременни искания за една и съща страница.
   const busy = React.useRef(false);
+
+  /**
+   * Показаното в момента, четимо ИЗВЪН прерисуването.
+   *
+   * Тихата проверка отдолу трябва да знае кои визии вече са на екрана, за да
+   * вземе само непознатите. Четенето им през `looks` би вързало проверката за
+   * всяко състояние и таймерът щеше да се пуска наново при всяко харесване.
+   */
+  const shown = React.useRef<Look[]>(looks);
+  const waiting = React.useRef<Look[]>(fresh);
+  React.useEffect(() => {
+    shown.current = looks;
+  }, [looks]);
+  React.useEffect(() => {
+    waiting.current = fresh;
+  }, [fresh]);
 
   // Показаното се записва в паметта при всяка промяна — така връщането
   // намира точно него, без да пита сървъра.
   React.useEffect(() => {
     if (looks.length > 0 && seed) {
-      cache.set(key, { seed, items: looks, cursor, end });
+      writeCache<Cached>(key, {
+        seed,
+        items: looks,
+        cursor,
+        end,
+        newest: newest.current,
+      });
     }
   }, [key, looks, seed, cursor, end]);
 
@@ -119,11 +200,12 @@ export function Lookbook() {
         const response = await fetch(`/api/lookbook?${params}`, { cache: 'no-store' });
         if (response.ok) {
           const page = (await response.json()) as Page;
-          setSeed(page.seed);
+          if (page.seed) setSeed(page.seed);
+          if (page.newest) newest.current = page.newest;
           setCursor(page.nextCursor);
           setEnd(page.nextCursor === null);
           setLooks((current) =>
-            options.fresh ? page.items : [...current, ...page.items],
+            options.fresh ? page.items : merge(current, page.items),
           );
         }
       } catch {
@@ -138,20 +220,23 @@ export function Lookbook() {
 
   // Първо зареждане — само когато в паметта няма нищо за тази категория.
   React.useEffect(() => {
-    const stored = cache.get(category ?? 'all');
+    const stored = readCache<Cached>(cacheKey(category));
     if (stored) {
       setLooks(stored.items);
       setSeed(stored.seed);
       setCursor(stored.cursor);
       setEnd(stored.end);
+      newest.current = stored.newest;
       setLoading(false);
       return;
     }
 
     setLooks([]);
+    setFresh([]);
     setCursor(null);
     setSeed(null);
     setEnd(false);
+    newest.current = null;
     void load({ fresh: true });
     // `load` се променя с всяко състояние; тук нарочно следим само филтъра.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,45 +262,95 @@ export function Lookbook() {
   /**
    * Тихата проверка за нови визии.
    *
-   * Пита се с НОВО семе: подредбата е случайна и „първа страница" при старото
-   * семе би върнала същите визии. Взимат се само непознатите.
+   * ═══ ЗАЩО ПИТА „СЛЕД КОГА", А НЕ „ДАЙ ПЪРВА СТРАНИЦА" ═══
+   *
+   * Първо беше второто: ново семе, първа страница, и за нови се смятаха
+   * непознатите. При двайсет визии минаваше. При хиляда всяка проверка връща
+   * дванайсет случайни, почти всички непознати — и на всеки петнайсет секунди
+   * галерията растеше със СТАРО съдържание, а копчето обявяваше „12 нови
+   * визии", без някой да е публикувал нищо.
+   *
+   * Сега се праща моментът, до който знаем всичко. Сървърът връща само
+   * публикуваното след него — тоест наистина новото.
    */
   React.useEffect(() => {
-    const timer = setInterval(() => {
+    const check = () => {
       if (document.visibilityState !== 'visible' || busy.current) return;
+      // Още не сме заредили нищо — няма спрямо какво да е „ново".
+      if (!newest.current) return;
 
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ since: newest.current });
       if (category) params.set('category', category);
 
       void fetch(`/api/lookbook?${params}`, { cache: 'no-store' })
         .then((response) => (response.ok ? response.json() : null))
         .then((page: Page | null) => {
-          if (!page) return;
+          if (!page || page.items.length === 0) return;
+          if (page.newest) newest.current = page.newest;
 
-          setLooks((current) => {
-            const known = new Set(current.map((item) => item.id));
-            const added = page.items.filter((item) => !known.has(item.id));
-            if (added.length === 0) return current;
+          const known = new Set(
+            [...shown.current, ...waiting.current].map((item) => item.id),
+          );
+          const added = page.items.filter((item) => !known.has(item.id));
+          if (added.length === 0) return;
 
-            // Горе — влизат веднага. По-надолу — чакат копчето, за да не
-            // подскочи редът под пръста.
-            if (window.scrollY < TOP_PX) return [...added, ...current];
-
-            setFresh((waiting) => {
-              const seen = new Set(waiting.map((item) => item.id));
-              return [...waiting, ...added.filter((item) => !seen.has(item.id))];
-            });
-            return current;
-          });
+          // Горе — влизат веднага. По-надолу — чакат копчето, за да не
+          // подскочи редът под пръста.
+          if (window.scrollY < TOP_PX) {
+            setLooks((current) => merge(added, current));
+          } else {
+            setFresh((current) => merge(current, added));
+          }
         })
         .catch(() => undefined);
-    }, POLL_MS);
+    };
 
-    return () => clearInterval(timer);
+    // Веднага при показване на екрана, после през равни промеждутъци.
+    // Първото е важното: човек, който се връща в приложението, очаква да
+    // види новото сега, а не след петнайсет секунди.
+    check();
+    const timer = setInterval(check, POLL_MS);
+    document.addEventListener('visibilitychange', check);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+    };
   }, [category]);
 
+  /**
+   * Маха визия, чиято снимка вече я няма.
+   *
+   * ═══ ЗАЩО НА „НЕ СЕ ЗАРЕДИ", А НЕ НА ОТДЕЛНА ПРОВЕРКА ═══
+   *
+   * Списъкът се сглобява веднъж и после стои. Между сглобяването и гледането
+   * собственикът може да е свалил визията си — тогава `/image` връща 404 и
+   * браузърът рисува счупена снимка. Питане „още ли са живи тези дванайсет"
+   * би било дванайсет заявки за нещо, което почти никога не се случва.
+   *
+   * Самото зареждане на снимката вече е тази проверка. Провали ли се, редът
+   * излиза — и от показаното, и от запомненото, за да не се върне при
+   * следващото влизане.
+   */
+  const forget = React.useCallback(
+    (id: string) => {
+      setLooks((current) => current.filter((item) => item.id !== id));
+      setFresh((current) => current.filter((item) => item.id !== id));
+      setOpen((current) => (current && current.id === id ? null : current));
+
+      const stored = readCache<Cached>(key);
+      if (stored) {
+        writeCache<Cached>(key, {
+          ...stored,
+          items: stored.items.filter((item) => item.id !== id),
+        });
+      }
+    },
+    [key],
+  );
+
   function showFresh(): void {
-    setLooks((current) => [...fresh, ...current]);
+    setLooks((current) => merge(fresh, current));
     setFresh([]);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -325,16 +460,18 @@ export function Lookbook() {
                     loading="lazy"
                     draggable={false}
                     onContextMenu={(event) => event.preventDefault()}
+                    onError={() => forget(look.id)}
                     className="no-save aspect-[4/5] w-full object-cover"
                   />
                 </button>
 
-                {isStyleKey(look.category) && (
-                  <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-ink/75 px-2 py-0.5 text-[10px] font-semibold text-paper backdrop-blur-sm">
-                    {STYLE_LABELS[look.category].emoji}{' '}
-                    {STYLE_LABELS[look.category].label}
-                  </span>
-                )}
+                {/* ═══ ЗАЩО ВЪРХУ СНИМКАТА НЯМА ЕТИКЕТ ═══
+
+                    Категорията стоеше в горния ляв ъгъл на всяка визия.
+                    Полза нула: филтърът отгоре вече казва какво гледаш, а на
+                    „Всички" етикетът повтаря нещо, което се вижда от самата
+                    дреха. Цена — тъмно петно върху всяка снимка, точно там,
+                    където най-често е лицето. */}
 
                 {/* Действията върху тъмна ивица. Преливането нагоре пази
                     четимостта и на светла снимка, без да я закрива. */}
@@ -360,7 +497,11 @@ export function Lookbook() {
                   <button
                     aria-label="Пробвай тази дреха върху себе си"
                     onClick={() => router.push(`${R.tryOn}?vdahnovenie=${look.id}`)}
-                    className="pressable flex h-8 items-center gap-1 rounded-full bg-lime pl-2 pr-2.5 text-[11.5px] font-semibold text-ink"
+                    /* Прозрачно, като сърцето отляво. Лаймовата хапка беше
+                       най-яркото нещо на екрана и се повтаряше на всяка
+                       плочка — двайсет копчета „купи" върху галерия. Сега
+                       двете действия тежат еднакво и снимката е главната. */
+                    className="pressable flex h-8 items-center gap-1 rounded-full px-1.5 text-[11.5px] font-semibold text-white/85"
                   >
                     <RemixIcon className="size-4" />
                     Remix

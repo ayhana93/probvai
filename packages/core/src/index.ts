@@ -233,6 +233,7 @@ export {
   PAGE_SIZE,
   newSeed,
   lookbookFeed,
+  looksPublishedAfter,
   setPublished,
   toggleLike,
   toggleSave,

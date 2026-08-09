@@ -56,6 +56,22 @@ export type LookPage = {
   nextCursor: string | null;
   /** Семето на подредбата — трябва да е същото за цялото скролване. */
   seed: string;
+  /**
+   * Кога е публикувана НАЙ-НОВАТА визия в галерията в този миг.
+   *
+   * ═══ ЗА КАКВО СЛУЖИ ═══
+   *
+   * Екранът пита през равни промеждутъци „има ли нещо ново". За да е този
+   * въпрос честен, трябва котва — момент, след който всичко е ново.
+   *
+   * Не става да е най-новото от ПОКАЗАНИТЕ визии: подредбата е случайна и
+   * първата страница е дванайсет визии от хиляда. Най-новата почти никога не
+   * е сред тях, и екранът щеше да обявява за „нови" стари визии, които просто
+   * не е заредил. Затова котвата идва от цялата галерия, не от страницата.
+   *
+   * Смята се само за първата страница — следващите не я ползват.
+   */
+  newest: string | null;
 };
 
 /**
@@ -142,6 +158,107 @@ export async function lookbookFeed(options: FeedOptions): Promise<LookPage> {
     // По-малко от исканото значи, че сме на дъното.
     nextCursor: items.length < limit ? null : (items.at(-1)?.cursor ?? null),
     seed: options.seed,
+    /**
+     * Само при първата страница — следващите не я ползват, а заявката не е
+     * безплатна.
+     *
+     * Празна галерия също дава котва: часът на СЪРВЪРА в този миг. Часовникът
+     * на телефона може да бърза с минути и тогава първите публикувани визии
+     * биха останали „стари", преди изобщо да са се появили.
+     */
+    newest:
+      cursor === ''
+        ? ((await newestPublishedAt(category)) ?? new Date().toISOString())
+        : null,
+  };
+}
+
+/** Кога е публикувана най-новата визия в галерията (в дадена категория). */
+async function newestPublishedAt(category: StyleCategory | null): Promise<string | null> {
+  const result = await dbSystem().generation.aggregate({
+    where: {
+      publishedAt: { not: null },
+      status: 'DONE',
+      resultKey: { not: null },
+      ...(category ? { category } : {}),
+    },
+    _max: { publishedAt: true },
+  });
+
+  return result._max.publishedAt?.toISOString() ?? null;
+}
+
+/**
+ * ВИЗИИТЕ, ПУБЛИКУВАНИ СЛЕД ДАДЕН МОМЕНТ.
+ *
+ * ═══ ЗАЩО НЕ Е ПАК `lookbookFeed` ═══
+ *
+ * Екранът питаше за първа страница с ново семе и смяташе за „нови" всички
+ * непознати. При двайсет визии това горе-долу работи. При хиляда всяка такава
+ * проверка връща дванайсет случайни, почти всички непознати — и списъкът
+ * растеше на всеки петнайсет секунди със СТАРО съдържание, а копчето обявяваше
+ * „12 нови визии", без някой да е публикувал каквото и да е.
+ *
+ * Тук подредбата не е случайна, а по време на публикуване. „Ново" значи ново.
+ */
+export async function looksPublishedAfter(options: {
+  viewerId: string;
+  since: Date;
+  category?: StyleCategory | null;
+  limit?: number;
+}): Promise<{ items: LookItem[]; newest: string | null }> {
+  const limit = Math.min(Math.max(options.limit ?? PAGE_SIZE, 1), 40);
+  const category = options.category ?? null;
+
+  const rows = await dbSystem().generation.findMany({
+    where: {
+      publishedAt: { gt: options.since },
+      status: 'DONE',
+      resultKey: { not: null },
+      ...(category ? { category } : {}),
+    },
+    orderBy: { publishedAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      category: true,
+      likeCount: true,
+      createdAt: true,
+      publishedAt: true,
+      userId: true,
+    },
+  });
+
+  if (rows.length === 0) return { items: [], newest: null };
+
+  const ids = rows.map((row) => row.id);
+  const [likes, saves] = await Promise.all([
+    dbSystem().lookLike.findMany({
+      where: { userId: options.viewerId, generationId: { in: ids } },
+      select: { generationId: true },
+    }),
+    dbSystem().lookSave.findMany({
+      where: { userId: options.viewerId, generationId: { in: ids } },
+      select: { generationId: true },
+    }),
+  ]);
+
+  const liked = new Set(likes.map((like) => like.generationId));
+  const saved = new Set(saves.map((save) => save.generationId));
+
+  return {
+    items: rows.map((row) => ({
+      id: row.id,
+      category: row.category,
+      likeCount: row.likeCount,
+      liked: liked.has(row.id),
+      saved: saved.has(row.id),
+      mine: row.userId === options.viewerId,
+      createdAt: row.createdAt,
+      // Курсорът тук е без значение: този списък не се листва.
+      cursor: '',
+    })),
+    newest: rows[0]?.publishedAt?.toISOString() ?? null,
   };
 }
 

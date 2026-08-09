@@ -13,11 +13,13 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { dbSystem, disconnectAll } from '@probvai/db';
 import {
   lookbookFeed,
+  looksPublishedAfter,
   newSeed,
   setPublished,
   toggleLike,
   toggleSave,
   savedLooks,
+  type LookPage,
 } from '../src/lookbook';
 
 const system = dbSystem();
@@ -125,11 +127,73 @@ describe('Галерията', () => {
     const hidden = await makeLook(owner);
     await setPublished(owner, shown, true);
 
-    const page = await lookbookFeed({ viewerId: viewer, seed: newSeed() });
-    const ids = page.items.map((item) => item.id);
+    // ═══ ЗАЩО СЕ ЛИСТВА, А НЕ СЕ ГЛЕДА ПЪРВАТА СТРАНИЦА ═══
+    //
+    // Подредбата е случайна и една страница е дванайсет визии от всичко в
+    // базата. Първата версия на този тест гледаше само първата страница и
+    // минаваше единствено докато базата беше почти празна — с двайсетина реда
+    // вътре вече падаше, без нищо в кода да се е счупило. Тест, който зависи
+    // от това колко данни има наоколо, не проверява нищо.
+    const seed = newSeed();
+    const ids: string[] = [];
+    let cursor: string | null = null;
+
+    for (let page = 0; page < 50; page += 1) {
+      const result: LookPage = await lookbookFeed({ viewerId: viewer, seed, cursor });
+      ids.push(...result.items.map((item) => item.id));
+      cursor = result.nextCursor;
+      if (cursor === null) break;
+    }
 
     expect(ids).toContain(shown);
     expect(ids).not.toContain(hidden);
+  });
+
+  /**
+   * ═══ „НОВО" ТРЯБВА ДА ЗНАЧИ НОВО ═══
+   *
+   * Екранът пита през равни промеждутъци какво е излязло, откакто гледа. Преди
+   * това ставаше с ново семе и първа страница, а за нови се смятаха всички
+   * непознати визии — тоест при пълна галерия почти всичко. Копчето обявяваше
+   * „12 нови визии", без някой да е публикувал нищо.
+   *
+   * Тук се проверява точно това: публикуваното ПРЕДИ котвата не се брои,
+   * публикуваното след нея — да.
+   */
+  it('новото значи публикуваното след даден момент', async () => {
+    const owner = await makeUser({ public: true });
+    const viewer = await makeUser();
+
+    const older = await makeLook(owner);
+    await setPublished(owner, older, true);
+
+    const anchor = new Date();
+    // Времето в базата е с точност до милисекунда — без тази пауза двете
+    // публикации падат в един и същ миг и проверката губи смисъл.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const newer = await makeLook(owner);
+    await setPublished(owner, newer, true);
+
+    const result = await looksPublishedAfter({ viewerId: viewer, since: anchor });
+    const ids = result.items.map((item) => item.id);
+
+    expect(ids).toContain(newer);
+    expect(ids).not.toContain(older);
+    expect(result.newest).not.toBeNull();
+  });
+
+  it('няма ново значи празен списък', async () => {
+    const owner = await makeUser({ public: true });
+    const viewer = await makeUser();
+
+    const lookId = await makeLook(owner);
+    await setPublished(owner, lookId, true);
+
+    const result = await looksPublishedAfter({ viewerId: viewer, since: new Date() });
+
+    expect(result.items).toEqual([]);
+    expect(result.newest).toBeNull();
   });
 
   it('скролването не повтаря и не пропуска', async () => {

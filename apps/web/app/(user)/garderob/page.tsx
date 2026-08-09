@@ -11,6 +11,7 @@ import { HeartIcon, RemixIcon, CrossIcon } from '@/components/ui/icons';
 import { STYLE_KEYS, STYLE_LABELS, isStyleKey, type StyleKey } from '@/lib/styles';
 import { cn } from '@/lib/cn';
 import { useMe } from '@/lib/use-me';
+import { dropCache, readCache, writeCache } from '@/lib/cache';
 import { R } from '@/lib/routes';
 
 /**
@@ -321,17 +322,43 @@ export default function GarderobPage() {
   const { me } = useMe();
   const router = useRouter();
 
+  /**
+   * ═══ ЗАЩО ГАРДЕРОБЪТ НЕ ТРЪГВА ОТ СКЕЛЕТИ ═══
+   *
+   * Дотук всяко влизане започваше с празна решетка и две сиви плочки, дори
+   * човек да е бил тук преди пет секунди. Снимките са едни и същи; мигането
+   * не носи информация, а само чакане.
+   *
+   * Сега показаното веднъж се пази в паметта на раздела. Влизането го изкарва
+   * ВЕДНАГА, а сървърът се пита тихо отзад — има ли промяна, решетката се
+   * обновява без скелети.
+   *
+   * ⚠ Тихото питане не е излишно: адресите към снимките са подписани и
+   *   изтичат. Без него запомнената решетка щеше да покаже счупени снимки
+   *   след около час.
+   */
   React.useEffect(() => {
     let alive = true;
-    setLoading(true);
 
     const query =
       filter === 'all' ? '' : filter === 'fav' ? '?favorite=1' : `?category=${filter}`;
+    const cacheKey = `wardrobe:${filter}`;
+    const stored = readCache<Item[]>(cacheKey);
+
+    if (stored) {
+      setItems(stored);
+      setLoading(false);
+    } else {
+      setItems([]);
+      setLoading(true);
+    }
 
     void fetch(`/api/wardrobe${query}`, { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : { items: [] }))
       .then((data: { items: Item[] }) => {
-        if (alive) setItems(data.items);
+        if (!alive) return;
+        writeCache(cacheKey, data.items);
+        setItems(data.items);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -401,6 +428,21 @@ export default function GarderobPage() {
         body: JSON.stringify({ published: next }),
       });
       if (!response.ok) throw new Error('отказано');
+
+      /**
+       * ═══ ЗАЩО ПАМЕТТА НА LOOKBOOK СЕ ИЗХВЪРЛЯ ТУК ═══
+       *
+       * Галерията пази страниците си, за да не мига при всяко връщане. След
+       * това натискане обаче запомненото вече не е вярно:
+       *
+       *   при публикуване — новата визия липсва в него;
+       *   при махане      — старата стои, а снимката ѝ вече дава 404. Точно
+       *                     оттам идваше празното каре с въпросителна.
+       *
+       * Затова паметта се изхвърля и галерията се сглобява наново при
+       * следващото показване — тоест веднага, щом човек се върне назад.
+       */
+      dropCache('lookbook:');
     } catch {
       // Връщаме показаното към истината. Мълчаливо „публикувано", което не е
       // публикувано, е по-лошо от видима грешка.
@@ -425,6 +467,9 @@ export default function GarderobPage() {
    */
   async function toggleFavorite(item: Item): Promise<void> {
     const next = !item.favorited;
+    // Филтърът „Любими" се смята на сървъра — запомненото за него става
+    // невярно още с това натискане.
+    dropCache('wardrobe:');
 
     const apply = (value: boolean) => {
       setItems((current) =>
@@ -471,6 +516,10 @@ export default function GarderobPage() {
   }
 
   async function remove(item: Item): Promise<void> {
+    // Изтритата проба не бива да се появи пак от паметта при следващо
+    // влизане. Тя вече я няма и в Lookbook.
+    dropCache('wardrobe:');
+    dropCache('lookbook:');
     setItems((current) => current.filter((entry) => entry.id !== item.id));
     setPendingDelete(null);
     try {
