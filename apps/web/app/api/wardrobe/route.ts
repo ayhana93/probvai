@@ -1,12 +1,26 @@
-import { getSignedUrl, isStyleCategory } from '@probvai/core';
+import { getSignedUrl, isStyleCategory, likedLooks } from '@probvai/core';
 import { dbAsUser } from '@probvai/db';
 import { requireUser } from '@/lib/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+type Item = {
+  id: string;
+  url: string;
+  merchant: string | null;
+  category: string | null;
+  watermarked: boolean;
+  saved: boolean;
+  favorited: boolean;
+  published: boolean;
+  /** Моя проба ли е. Чуждите идват от харесаните в Lookbook. */
+  mine: boolean;
+  createdAt: string;
+};
+
 /**
- * GET /api/wardrobe?category= — гардеробът.
+ * GET /api/wardrobe?category=&favorite=1 — гардеробът.
  *
  * Чете през `dbAsUser`, тоест през Row Level Security: базата, а не кодът,
  * гарантира, че се връщат само неговите проби. Затова тук няма `where`
@@ -17,6 +31,16 @@ export const dynamic = 'force-dynamic';
  * Показва се САМО когато пробата е направена от линк. При качена снимка
  * нямаме откъде да знаем от кой магазин е дрехата — а измислено име е
  * по-лошо от липсващо.
+ *
+ * ═══ „ЛЮБИМИ" СЪБИРА ДВЕ НЕЩА ═══
+ *
+ * Сърцето значи едно и също, където и да е натиснато: върху своя проба и
+ * върху чужда визия в Lookbook. Затова филтърът връща и двете.
+ *
+ * Чуждите минават по ДРУГ път — `likedLooks`, през системната роля, с
+ * изрично изброени колони. Ключът им в R2 не напуска сървъра: снимката се
+ * тегли през `/api/lookbook/{id}/image`, който сам проверява, че визията
+ * още е публикувана. Свали ли я собственикът, тя изчезва и оттук.
  */
 export async function GET(request: Request): Promise<Response> {
   const session = await requireUser();
@@ -53,7 +77,7 @@ export async function GET(request: Request): Promise<Response> {
     },
   });
 
-  const items = await Promise.all(
+  const items: Item[] = await Promise.all(
     generations.map(async (generation) => ({
       id: generation.id,
       url: await getSignedUrl(generation.resultKey!),
@@ -64,9 +88,37 @@ export async function GET(request: Request): Promise<Response> {
       saved: generation.savedAt !== null,
       favorited: generation.favoritedAt !== null,
       published: generation.publishedAt !== null,
+      mine: true,
       createdAt: generation.createdAt.toISOString(),
     })),
   );
+
+  if (onlyFavorites) {
+    const liked = await likedLooks(session.user.id);
+
+    for (const look of liked) {
+      // Категорията се спазва и за чуждите — иначе филтърът „Лято" би
+      // показвал зимни визии само защото са харесани.
+      if (category && look.category !== category) continue;
+
+      items.push({
+        id: look.id,
+        url: `/api/lookbook/${look.id}/image`,
+        merchant: null,
+        category: look.category,
+        watermarked: false,
+        saved: false,
+        favorited: true,
+        published: true,
+        mine: false,
+        createdAt: look.likedAt.toISOString(),
+      });
+    }
+
+    // Едно подреждане за двата източника. Иначе чуждите щяха да стоят на
+    // едно и също място най-отдолу, независимо кога са харесани.
+    items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
 
   return Response.json({ items }, { headers: { 'cache-control': 'no-store' } });
 }

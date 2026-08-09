@@ -330,6 +330,58 @@ export async function savedLooks(viewerId: string, limit = 60): Promise<LookItem
   }));
 }
 
+/**
+ * ЧУЖДИТЕ ВИЗИИ, КОИТО ЧОВЕКЪТ Е ХАРЕСАЛ.
+ *
+ * ═══ ЗАЩО ГИ ЧЕТЕ ГАРДЕРОБЪТ ═══
+ *
+ * Сърцето в Lookbook и сърцето в гардероба изглеждаха еднакво и значеха
+ * различни неща — харесване с брояч срещу „моя любима проба". Хванахме го по
+ * логовете: човек харесва в галерията и после търси визията в „Любими".
+ *
+ * Затова сега сърцето значи ЕДНО НЕЩО, където и да е натиснато. Харесаната
+ * чужда визия влиза в „Любими" в гардероба, отбелязана като чужда.
+ *
+ * ═══ КАКВО НЕ ИЗЛИЗА ОТТУК ═══
+ *
+ * Само `id` и категорията. Ключът в R2 не напуска сървъра: снимката се
+ * показва през `/api/lookbook/{id}/image`, който сам проверява, че визията
+ * още е публикувана. Махне ли собственикът визията от галерията, тя изчезва
+ * и оттук — заявката вече не я връща.
+ */
+export type LikedLook = {
+  id: string;
+  category: StyleCategory | null;
+  likedAt: Date;
+};
+
+export async function likedLooks(viewerId: string, limit = 60): Promise<LikedLook[]> {
+  const rows = await dbSystem().lookLike.findMany({
+    where: {
+      userId: viewerId,
+      // Само визии, които в ТОЗИ момент са публикувани и готови. Отметката
+      // остава в базата, но не дава достъп до нищо, което е било свалено.
+      generation: {
+        publishedAt: { not: null },
+        status: 'DONE',
+        resultKey: { not: null },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    select: {
+      createdAt: true,
+      generation: { select: { id: true, category: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.generation.id,
+    category: row.generation.category,
+    likedAt: row.createdAt,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Снимката
 // ---------------------------------------------------------------------------

@@ -235,11 +235,13 @@ export {
   toggleLike,
   toggleSave,
   savedLooks,
+  likedLooks,
   publicLookImageUrl,
 } from './lookbook';
 export type {
   LookItem,
   LookPage,
+  LikedLook,
   FeedOptions,
   ToggleResult,
   PublishResult,

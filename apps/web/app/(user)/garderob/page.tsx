@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Patch } from '@/components/ui/patch';
 import { Sheet } from '@/components/ui/sheet';
@@ -45,6 +46,8 @@ type Item = {
   saved: boolean;
   favorited: boolean;
   published: boolean;
+  /** Моя проба ли е. Чуждите идват от харесаните в Lookbook. */
+  mine: boolean;
 };
 
 /**
@@ -189,6 +192,9 @@ function Tile({
       onPointerDown={() => {
         fired.current = false;
         setHolding(true);
+        // Чуждата визия не се трие оттук — тя не е наша. Махането ѝ е
+        // отхаресване, а то е на сърцето.
+        if (!item.mine) return;
         timer.current = setTimeout(() => {
           fired.current = true;
           setHolding(false);
@@ -245,7 +251,13 @@ function Tile({
             и без това вижда върху самата снимка, и то с лилаво петно точно
             там, където гледа. Копчето „Махни водния знак" стои на екрана с
             резултата — там има смисъл, защото там може да се направи нещо. */}
-        {item.published && (
+        {!item.mine && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-ink/80 px-2 py-1 text-[10px] font-semibold text-lime backdrop-blur-sm">
+            Lookbook
+          </span>
+        )}
+
+        {item.mine && item.published && (
           <span
             title="В Lookbook"
             aria-label="В Lookbook"
@@ -307,6 +319,7 @@ export default function GarderobPage() {
   const [pendingDelete, setPendingDelete] = React.useState<Item | null>(null);
   const [pendingCategory, setPendingCategory] = React.useState<Item | null>(null);
   const { me } = useMe();
+  const router = useRouter();
 
   React.useEffect(() => {
     let alive = true;
@@ -426,13 +439,32 @@ export default function GarderobPage() {
 
     apply(next);
 
+    /**
+     * ═══ ЕДНО СЪРЦЕ, ДВА ПЪТЯ ═══
+     *
+     * Своята проба се отбелязва с `favorited_at`. Чуждата визия няма как —
+     * тя не е наш ред. За нея същото натискане маха харесването в Lookbook,
+     * а с това тя излиза и от „Любими".
+     *
+     * За човека това е едно действие. Разликата е наша работа.
+     */
     try {
-      const response = await fetch(`/api/generate/${item.id}/favorite`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ favorited: next }),
-      });
+      const response = item.mine
+        ? await fetch(`/api/generate/${item.id}/favorite`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ favorited: next }),
+          })
+        : await fetch(`/api/lookbook/${item.id}/like`, { method: 'POST' });
+
       if (!response.ok) throw new Error('отказано');
+
+      // Отхаресаната чужда визия няма какво да прави в списъка — тя е тук
+      // само защото е харесана.
+      if (!item.mine && !next) {
+        setItems((current) => current.filter((entry) => entry.id !== item.id));
+        setOpen((current) => (current && current.id === item.id ? null : current));
+      }
     } catch {
       apply(!next);
     }
@@ -523,7 +555,7 @@ export default function GarderobPage() {
       ) : items.length === 0 ? (
         <p className="mt-8 text-center text-[14px] text-ink-45">
           {filter === 'fav'
-            ? 'Още нямаш любими. Отвори проба и натисни сърцето.'
+            ? 'Още нямаш любими. Натисни сърцето върху проба — или върху визия в Lookbook.'
             : 'Няма проби в тази категория.'}
         </p>
       ) : (
@@ -583,8 +615,20 @@ export default function GarderobPage() {
             <CrossIcon className="size-5" />
           </button>
 
+          {/* ═══ ЧУЖДАТА ВИЗИЯ ИМА ДРУГИ ДЕЙСТВИЯ ═══
+
+              Тя не се трие, не ѝ се сменя категорията и не се публикува —
+              не е наша. Остават две: сърцето (маха харесването и с това я
+              маха оттук) и „Пробвай", което взима дрехата от нея.
+
+              Копчетата са в решетка по броя си, не заковано на четири:
+              две копчета, разтеглени на четири колони, изглеждат като
+              такива, на които им липсва нещо. */}
           <div
-            className="grid grid-cols-4 gap-2 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-2"
+            className={cn(
+              'grid gap-2 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-2',
+              open.mine ? 'grid-cols-4' : 'grid-cols-2',
+            )}
             onClick={(event) => event.stopPropagation()}
           >
             <SheetAction
@@ -596,39 +640,52 @@ export default function GarderobPage() {
               <HeartIcon filled={open.favorited} />
             </SheetAction>
 
-            <SheetAction
-              label="Lookbook"
-              active={open.published}
-              activeClass="bg-lime text-ink"
-              disabled={!me?.profile.wardrobePublic}
-              onClick={() => void togglePublished(open)}
-            >
-              <Sparks className="h-4 w-6" />
-            </SheetAction>
+            {open.mine ? (
+              <>
+                <SheetAction
+                  label="Lookbook"
+                  active={open.published}
+                  activeClass="bg-lime text-ink"
+                  disabled={!me?.profile.wardrobePublic}
+                  onClick={() => void togglePublished(open)}
+                >
+                  <Sparks className="h-4 w-6" />
+                </SheetAction>
 
-            <SheetAction
-              label="Категория"
-              onClick={() => {
-                setPendingCategory(open);
-                setOpen(null);
-              }}
-            >
-              <RemixIcon />
-            </SheetAction>
+                <SheetAction
+                  label="Категория"
+                  onClick={() => {
+                    setPendingCategory(open);
+                    setOpen(null);
+                  }}
+                >
+                  <RemixIcon />
+                </SheetAction>
 
-            <SheetAction
-              label="Изтрий"
-              danger
-              onClick={() => {
-                setPendingDelete(open);
-                setOpen(null);
-              }}
-            >
-              <TrashIcon />
-            </SheetAction>
+                <SheetAction
+                  label="Изтрий"
+                  danger
+                  onClick={() => {
+                    setPendingDelete(open);
+                    setOpen(null);
+                  }}
+                >
+                  <TrashIcon />
+                </SheetAction>
+              </>
+            ) : (
+              <SheetAction
+                label="Пробвай"
+                activeClass="bg-lime text-ink"
+                active
+                onClick={() => router.push(`${R.tryOn}?vdahnovenie=${open.id}`)}
+              >
+                <RemixIcon />
+              </SheetAction>
+            )}
           </div>
 
-          {!me?.profile.wardrobePublic && (
+          {open.mine && !me?.profile.wardrobePublic && (
             <p
               className="px-6 pb-[max(20px,env(safe-area-inset-bottom))] text-center text-[12px] leading-snug text-white/45"
               onClick={(event) => event.stopPropagation()}
