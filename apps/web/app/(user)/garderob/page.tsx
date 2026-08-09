@@ -154,10 +154,12 @@ function Tile({
   item,
   onOpen,
   onHold,
+  onFavorite,
 }: {
   item: Item;
   onOpen: () => void;
   onHold: () => void;
+  onFavorite: () => void;
 }) {
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = React.useState(false);
@@ -174,6 +176,14 @@ function Tile({
   const style = isStyleKey(item.category) ? STYLE_LABELS[item.category] : null;
 
   return (
+    /**
+     * ═══ ЗАЩО СЪРЦЕТО Е ИЗВЪН ПЛОЧКАТА, А НЕ В НЕЯ ═══
+     *
+     * Плочката е `<button>`. Копче в копче е невалиден HTML и браузърите се
+     * разминават какво правят с натискането. Затова сърцето е СЕСТРА на
+     * плочката, сложена върху ъгъла ѝ.
+     */
+    <div className="relative">
     <button
       className="block w-full text-left"
       onPointerDown={() => {
@@ -245,17 +255,39 @@ function Tile({
           </span>
         )}
 
-        {item.favorited && (
-          <span
-            title="Любима"
-            aria-label="Любима"
-            className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-ink/85 text-danger backdrop-blur-sm"
-          >
-            <HeartIcon filled className="size-3.5" />
-          </span>
-        )}
+
       </Patch>
     </button>
+
+      {/* ═══ ЗАЩО СЪРЦЕТО Е ТУК, А НЕ САМО НА ЦЯЛ ЕКРАН ═══
+
+          Първо беше единствено в екрана на цял размер. Прегледах логовете на
+          продукцията: за цял час никой не е стигнал до него — нито едно
+          обръщение. Гардеробът беше отварян, филтърът „Любими" — натискан, и
+          празен. Тоест начин за отбелязване имаше, но нямаше как да се
+          намери.
+
+          Сега стои върху всяка плочка и се вижда, преди да е натиснато нещо.
+          Тъмното кръгче държи контраста над всяка снимка — светло сърце върху
+          светъл пясък изчезва. */}
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onFavorite();
+        }}
+        aria-label={item.favorited ? 'Махни от любими' : 'Добави в любими'}
+        aria-pressed={item.favorited}
+        className={cn(
+          'pressable absolute bottom-3 right-3 grid size-9 place-items-center rounded-full',
+          'bg-ink/70 backdrop-blur-sm',
+          'transition-colors duration-[var(--dur-menu)] ease-[var(--ease-out)]',
+          item.favorited ? 'text-danger-soft' : 'text-white/70',
+        )}
+      >
+        <HeartIcon filled={item.favorited} className="size-[18px]" />
+      </button>
+    </div>
   );
 }
 
@@ -452,8 +484,8 @@ export default function GarderobPage() {
         <Zigzag className="mb-2 h-4 w-14 text-ink/20" />
       </div>
       <p className="mt-2 text-[14px] text-ink-45">
-        {items.length} {items.length === 1 ? 'проба' : 'проби'} · натисни за цял
-        екран, задръж за изтриване
+        {items.length} {items.length === 1 ? 'проба' : 'проби'} · сърцето слага
+        в любими · натисни за цял екран
       </p>
 
       {/* ── Филтрите ──────────────────────────────────────────────────────
@@ -502,6 +534,7 @@ export default function GarderobPage() {
                 item={item}
                 onOpen={() => setOpen(item)}
                 onHold={() => setPendingDelete(item)}
+                onFavorite={() => void toggleFavorite(item)}
               />
             </li>
           ))}
