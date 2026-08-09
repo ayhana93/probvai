@@ -15,6 +15,7 @@ export type { CreditResult, CreditFailure } from './credits';
 // ── Плащания ───────────────────────────────────────────────────────────────
 export {
   PURCHASE_STEP_CREDITS,
+  purchaseRules,
   quoteCredits,
   createCheckoutSession,
   verifyWebhook,
@@ -24,6 +25,7 @@ export {
 } from './payments';
 export type {
   PriceQuote,
+  PriceRules,
   QuoteResult,
   QuoteFailure,
   CheckoutInput,
