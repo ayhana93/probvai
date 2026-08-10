@@ -31,6 +31,8 @@ export type Me = {
   hasDefaultPhoto: boolean;
   hasAvatar: boolean;
   memberSince: string;
+  /** Показва ли се публичната галерия. Идва от средата, не от профила. */
+  lookbookEnabled: boolean;
   profile: {
     firstName: string | null;
     lastName: string | null;

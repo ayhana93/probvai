@@ -31,7 +31,10 @@ type Item = {
 };
 
 const LEFT: Item[] = [
-  { href: '/', label: 'Lookbook', Icon: HomeIcon },
+  // Надписът е „Начало", а не „Lookbook": галерията може да е скрита, а
+  // табът си остава началният екран. Текст, който чете само екранен четец,
+  // няма право да лъже — той е единственото, което човекът чува.
+  { href: '/', label: 'Начало', Icon: HomeIcon },
   { href: R.wardrobe, label: 'Гардероб', Icon: WardrobeIcon },
 ];
 

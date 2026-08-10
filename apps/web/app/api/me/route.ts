@@ -1,4 +1,4 @@
-import { ageFromBirthYear, tierFrom } from '@probvai/core';
+import { ageFromBirthYear, env, tierFrom } from '@probvai/core';
 import { dbAsUser } from '@probvai/db';
 import { requireUser } from '@/lib/session';
 
@@ -65,6 +65,17 @@ export async function GET(): Promise<Response> {
       hasAvatar: Boolean(me.avatarKey),
       memberSince: me.createdAt.toISOString(),
       ledger: recentLedger,
+
+      /**
+       * Показва ли се публичната галерия.
+       *
+       * Стои в профила, а не на отделен адрес, защото се пита от същите
+       * екрани и в същия момент — една заявка вместо две. Гардеробът го чете,
+       * за да не предлага „Покажи в Lookbook", когато Lookbook го няма:
+       * копче, което публикува в скрита галерия, е обещание, което никой не
+       * може да провери.
+       */
+      lookbookEnabled: env.LOOKBOOK_ENABLED,
 
       profile: {
         firstName: me.firstName,
