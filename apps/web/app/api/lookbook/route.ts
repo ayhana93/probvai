@@ -6,6 +6,7 @@ import {
   PAGE_SIZE,
 } from '@probvai/core';
 import { requireUser } from '@/lib/session';
+import { lookbookClosed } from '@/lib/lookbook-gate';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,9 @@ export const dynamic = 'force-dynamic';
  * значи нова подредба.
  */
 export async function GET(request: Request): Promise<Response> {
+  const closed = lookbookClosed();
+  if (closed) return closed;
+
   const session = await requireUser();
   if (session.response) return session.response;
 

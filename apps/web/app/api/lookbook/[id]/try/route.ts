@@ -1,6 +1,7 @@
 import { buildKey, getObject, putObject } from '@probvai/core';
 import { dbSystem } from '@probvai/db';
 import { jsonError, requireUser } from '@/lib/session';
+import { lookbookClosed } from '@/lib/lookbook-gate';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,9 @@ export async function POST(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  const closed = lookbookClosed();
+  if (closed) return closed;
+
   const session = await requireUser();
   if (session.response) return session.response;
 

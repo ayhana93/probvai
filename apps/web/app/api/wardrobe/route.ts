@@ -1,4 +1,4 @@
-import { getSignedUrl, isStyleCategory, likedLooks } from '@probvai/core';
+import { env, getSignedUrl, isStyleCategory, likedLooks } from '@probvai/core';
 import { dbAsUser } from '@probvai/db';
 import { requireUser } from '@/lib/session';
 
@@ -93,7 +93,14 @@ export async function GET(request: Request): Promise<Response> {
     })),
   );
 
-  if (onlyFavorites) {
+  /**
+   * Чуждите харесани визии влизат само докато галерията се показва.
+   *
+   * Иначе „Любими" щеше да е единственото място, където чуждо съдържание
+   * оцелява след скриването на Lookbook — и хем неочаквано, хем без път
+   * назад към мястото, откъдето е дошло.
+   */
+  if (onlyFavorites && env.LOOKBOOK_ENABLED) {
     const liked = await likedLooks(session.user.id);
 
     for (const look of liked) {

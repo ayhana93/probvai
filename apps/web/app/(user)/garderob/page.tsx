@@ -156,11 +156,14 @@ const HOLD_MS = 520;
 
 function Tile({
   item,
+  showLookbook,
   onOpen,
   onHold,
   onFavorite,
 }: {
   item: Item;
+  /** Скрита ли е галерията. Тогава значката „В Lookbook" няма какво да каже. */
+  showLookbook: boolean;
   onOpen: () => void;
   onHold: () => void;
   onFavorite: () => void;
@@ -258,7 +261,7 @@ function Tile({
           </span>
         )}
 
-        {item.mine && item.published && (
+        {item.mine && item.published && showLookbook && (
           <span
             title="В Lookbook"
             aria-label="В Lookbook"
@@ -604,7 +607,9 @@ export default function GarderobPage() {
       ) : items.length === 0 ? (
         <p className="mt-8 text-center text-[14px] text-ink-45">
           {filter === 'fav'
-            ? 'Още нямаш любими. Натисни сърцето върху проба — или върху визия в Lookbook.'
+            ? me?.lookbookEnabled
+              ? 'Още нямаш любими. Натисни сърцето върху проба — или върху визия в Lookbook.'
+              : 'Още нямаш любими. Натисни сърцето върху проба.'
             : 'Няма проби в тази категория.'}
         </p>
       ) : (
@@ -613,6 +618,7 @@ export default function GarderobPage() {
             <li key={item.id}>
               <Tile
                 item={item}
+                showLookbook={me?.lookbookEnabled ?? false}
                 onOpen={() => setOpen(item)}
                 onHold={() => setPendingDelete(item)}
                 onFavorite={() => void toggleFavorite(item)}
@@ -673,10 +679,17 @@ export default function GarderobPage() {
               Копчетата са в решетка по броя си, не заковано на четири:
               две копчета, разтеглени на четири колони, изглеждат като
               такива, на които им липсва нещо. */}
+          {/* Броят колони следва броя копчета, не обратното. Три копчета,
+              разтеглени на четири колони, оставят празно място, което се чете
+              като липсващо копче. */}
           <div
             className={cn(
               'grid gap-2 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-2',
-              open.mine ? 'grid-cols-4' : 'grid-cols-2',
+              !open.mine
+                ? 'grid-cols-2'
+                : me?.lookbookEnabled
+                  ? 'grid-cols-4'
+                  : 'grid-cols-3',
             )}
             onClick={(event) => event.stopPropagation()}
           >
@@ -691,15 +704,20 @@ export default function GarderobPage() {
 
             {open.mine ? (
               <>
-                <SheetAction
-                  label="Lookbook"
-                  active={open.published}
-                  activeClass="bg-lime text-ink"
-                  disabled={!me?.profile.wardrobePublic}
-                  onClick={() => void togglePublished(open)}
-                >
-                  <Sparks className="h-4 w-6" />
-                </SheetAction>
+                {/* Скрита галерия значи и скрито копче за публикуване.
+                    Копче, което пуска визия в галерия, която никой не може
+                    да отвори, е обещание без покритие. */}
+                {me?.lookbookEnabled && (
+                  <SheetAction
+                    label="Lookbook"
+                    active={open.published}
+                    activeClass="bg-lime text-ink"
+                    disabled={!me.profile.wardrobePublic}
+                    onClick={() => void togglePublished(open)}
+                  >
+                    <Sparks className="h-4 w-6" />
+                  </SheetAction>
+                )}
 
                 <SheetAction
                   label="Категория"
@@ -734,7 +752,7 @@ export default function GarderobPage() {
             )}
           </div>
 
-          {open.mine && !me?.profile.wardrobePublic && (
+          {open.mine && me?.lookbookEnabled && !me.profile.wardrobePublic && (
             <p
               className="px-6 pb-[max(20px,env(safe-area-inset-bottom))] text-center text-[12px] leading-snug text-white/45"
               onClick={(event) => event.stopPropagation()}

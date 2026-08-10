@@ -1,9 +1,12 @@
-'use client';
-
+import Link from 'next/link';
+import { env } from '@probvai/core';
+import { HomeBalance } from '@/components/home-balance';
 import { Lookbook } from '@/components/lookbook';
 import { Patch } from '@/components/ui/patch';
-import { Sparks } from '@/components/ui/scribble';
-import { useMe } from '@/lib/use-me';
+import { Sparks, Zigzag } from '@/components/ui/scribble';
+import { R } from '@/lib/routes';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * НАЧАЛО
@@ -15,84 +18,83 @@ import { useMe } from '@/lib/use-me';
  * заедно правеха началния екран каталог от възможности — човек го отваряше и
  * му трябваше решение, преди да види каквото и да е.
  *
- * Свалени са:
+ * Останаха балансът — числото, което решава дали изобщо може да се пробва —
+ * и по едно нещо под него.
  *
- *   „Нова проба"  — стои в средата на долното меню, издигнато и лаймово, на
- *                   всеки екран. Второ копче за същото не добавя път, а
- *                   отнема място на единственото живо съдържание.
+ * ═══ ЗАЩО СЪДЪРЖАНИЕТО СЕ СМЕНЯ ═══
  *
- *   Магазините    — списък с имена, който не се натиска и не води никъде.
- *                   Мястото му е при полето за линк, не тук.
+ * Докато галерията се показва, тя е причината приложението да се отвори и в
+ * ден, в който няма какво да се пробва. Скрие ли се, под баланса остава дупка
+ * — и точно тогава трите стъпки си заслужават мястото.
  *
- *   Съветите      — три правила за добра снимка. Четат се веднъж и после
- *                   заемат половин екран завинаги. Същото пише и до карето
- *                   за качване, където има значение.
+ * Същият текст беше свален оттук преди, защото до пълна галерия беше шум.
+ * Съдържание не е добро или лошо само по себе си: зависи какво стои до него.
  *
- * Остават балансът — числото, което решава дали изобщо може да се пробва —
- * и Lookbook. Второто е причината приложението да се отвори и в ден, в
- * който няма какво да се пробва.
+ * ═══ ЗАЩО РЕШЕНИЕТО Е НА СЪРВЪРА ═══
+ *
+ * Ключът е стойност от средата и се знае, преди страницата да тръгне към
+ * браузъра. Питан от браузъра, той щеше да значи първо едно нещо на екрана,
+ * после друго — а човекът вижда пренареждането.
  */
 export default function HomePage() {
-  const { me, loading } = useMe();
-  const credits = me?.credits ?? 0;
-  const tier = me?.tier;
-
   return (
     <main className="px-5 pt-5">
-      {/* ── Балансът ────────────────────────────────────────────────────────
+      <HomeBalance />
 
-          ═══ ЗАЩО Е НА ЕДИН РЕД ═══
-
-          Беше висока карта: надпис, число 38 пиксела, подчертаване, черта и
-          цяла лента за нивото. Заемаше горната трета от екрана, за да каже
-          едно число.
-
-          Сега е един ред: числото вляво, нивото вдясно, тънката лента отдолу.
-          Числото остава най-едрото нещо — то е причината да се погледне —
-          но под него започва Lookbook, а не още от същото. */}
-      <Patch material="leather" tilt={-1} className="flex items-center gap-4 px-5 py-3.5">
-        {loading ? (
-          <div className="skeleton h-8 w-24 rounded-full" />
-        ) : (
-          <div className="flex items-baseline gap-1.5">
-            <span className="display text-[30px] leading-none text-lime">{credits}</span>
-            <span className="text-[12.5px] font-semibold text-white/55">
-              {credits === 1 ? 'проба' : 'проби'}
-            </span>
-          </div>
-        )}
-
-        {tier && (
-          <div className="ml-auto min-w-0 text-right">
-            <div className="truncate text-[12.5px] font-semibold text-white/85">
-              {tier.vip ? '🔑 VIP Closet' : `${tier.emoji} ${tier.rank}`}
-            </div>
-
-            {!tier.vip && (
-              <>
-                <div className="mt-1 h-1 w-24 overflow-hidden rounded-full bg-white/12">
-                  <div
-                    className="h-full rounded-full bg-lime transition-[width] duration-[var(--dur-sheet)] ease-[var(--ease-out)]"
-                    style={{ width: `${tier.progressPct}%` }}
-                  />
-                </div>
-                {tier.next && (
-                  <div className="mt-1 truncate text-[11px] text-white/40">
-                    още {tier.toNext} до {tier.next}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        <Sparks className="h-3 w-4 shrink-0 text-lime" />
-      </Patch>
-
-      {/* ── Lookbook ────────────────────────────────────────────────────────
-          Единственото съдържание на екрана. Затова започва високо и заема
-          всичко останало. */}
-      <Lookbook />
+      {env.LOOKBOOK_ENABLED ? <Lookbook /> : <StartHere />}
     </main>
+  );
+}
+
+/**
+ * ТРИТЕ СТЪПКИ.
+ *
+ * Не е копче — копчето „Нова проба" стои издигнато в средата на долното меню
+ * на всеки екран и второ за същото не добавя път. Това обяснява КАКВО ще се
+ * случи, когато се натисне то, и затова свършва с връзка, а не с призив.
+ */
+function StartHere() {
+  const steps = [
+    { n: 1, title: 'Снимка на теб', note: 'Цял ръст, права стойка, добра светлина.' },
+    { n: 2, title: 'Снимка на дрехата', note: 'От магазин или от твоя гардероб.' },
+    { n: 3, title: 'Готово', note: 'Пробата влиза в гардероба ти.' },
+  ];
+
+  return (
+    <section className="mt-7">
+      <div className="flex items-end justify-between gap-3">
+        <h2 className="display shrink-0 text-[22px]">Как става</h2>
+        <Zigzag className="mb-1.5 h-4 w-14 text-ink/20" />
+      </div>
+
+      <ol className="stagger mt-4 space-y-2.5">
+        {steps.map((step) => (
+          <li key={step.n}>
+            <Patch material="paper" className="flex items-center gap-4 px-4 py-3.5">
+              <span
+                aria-hidden="true"
+                className="display grid size-9 shrink-0 place-items-center rounded-full bg-lime text-[15px] text-ink"
+              >
+                {step.n}
+              </span>
+              <div className="min-w-0">
+                <div className="text-[15px] font-semibold">{step.title}</div>
+                <div className="mt-0.5 text-[13px] leading-snug text-ink-45">
+                  {step.note}
+                </div>
+              </div>
+            </Patch>
+          </li>
+        ))}
+      </ol>
+
+      <Link
+        href={R.tryOn}
+        className="pressable mt-5 flex items-center justify-center gap-2 rounded-full bg-lime px-7 py-3.5 shadow-[0_3px_0_var(--color-lime-deep)]"
+      >
+        <Sparks className="h-3.5 w-5 text-ink" />
+        <span className="display text-[16px]">Пробвай нещо</span>
+      </Link>
+    </section>
   );
 }
